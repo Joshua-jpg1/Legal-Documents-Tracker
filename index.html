@@ -1,95 +1,209 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My First Website</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      min-height: 100vh;
-      display: grid;
-      place-items: center;
-      padding: 20px;
-      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-      background: yellow;
-      color: #1e293b;
-    }
-    .card {
-      width: min(100%, 460px);
-      padding: 42px 30px;
-      text-align: center;
-      background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(10px);
-      border-radius: 20px;
-      box-shadow: 0 20px 40px rgba(124, 58, 237, 0.25);
-      border: 1px solid rgba(255, 255, 255, 0.6);
-    }
-    .tag {
-      display: inline-block;
-      margin-bottom: 18px;
-      padding: 7px 14px;
-      border-radius: 999px;
-      background: linear-gradient(135deg, #fdf2f8, #fff7ed);
-      color: #db2777;
-      border: 1px solid #fbcfe8;
-      font-size: 12px;
-      font-weight: 700;
-      letter-spacing: .05em;
-    }
-    h1 {
-      margin-bottom: 12px;
-      background: linear-gradient(135deg, #7c3aed, #ec4899, #f97316);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      font-size: 32px;
-      font-weight: 800;
-    }
-    p { margin-bottom: 24px; color: #4b5563; line-height: 1.6; }
-    button {
-      border: 0;
-      border-radius: 12px;
-      padding: 13px 26px;
-      background: linear-gradient(135deg, #db2777, #f97316);
-      color: white;
-      font-size: 15px;
-      font-weight: 700;
-      cursor: pointer;
-      box-shadow: 0 4px 15px rgba(219, 39, 119, 0.35);
-      transition: all 0.2s ease;
-    }
-    button:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(249, 115, 22, 0.45);
-      background: linear-gradient(135deg, #c026d3, #ea580c);
-    }
-    button:focus-visible { outline: 3px solid #f472b6; outline-offset: 3px; }
-    #clock { margin-top: 24px; color: #475569; font-size: 14px; font-weight: 500; }
-    footer { margin-top: 28px; color: #94a3b8; font-size: 12px; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Employee Management System</title>
+<style>
+:root{--navy:#172b4d;--navy2:#223d65;--blue:#2563eb;--bg:#f3f6fb;--line:#e4e9f1;--muted:#64748b;--white:#fff;--green:#15803d;--amber:#b45309;--red:#b91c1c}
+*{box-sizing:border-box}body{margin:0;font-family:Segoe UI,Arial,sans-serif;background:var(--bg);color:#172033}
+.app{display:flex;min-height:100vh}.sidebar{width:260px;background:var(--navy);color:white;padding:22px 14px;position:fixed;inset:0 auto 0 0;overflow:auto;z-index:5}
+.brand{padding:4px 12px 24px;border-bottom:1px solid #ffffff24;margin-bottom:18px}.brand h2{font-size:17px;margin:0 0 5px}.brand small{color:#bdc9da}
+.nav-label{font-size:10px;letter-spacing:1.4px;color:#9fb0c8;padding:8px 12px}
+.nav button{width:100%;border:0;background:transparent;color:#dce6f5;text-align:left;padding:12px;border-radius:9px;cursor:pointer;margin:2px 0;font-size:13px;display:flex;gap:11px;align-items:center}
+.nav button:hover,.nav button.active{background:#34527b;color:#fff}.nav .letter{background:#ffffff20;border-radius:7px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;flex:none}.nav .letter svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.side-foot{font-size:11px;color:#9fb0c8;padding:20px 12px}
+.main{margin-left:260px;width:calc(100% - 260px);padding:26px 32px 50px}
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;gap:12px}.eyebrow{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}.topbar h1{font-size:25px;margin:4px 0}.top-actions{display:flex;gap:8px;flex-wrap:wrap}
+button,.btn{font:inherit}.btn{border:0;border-radius:8px;padding:10px 14px;cursor:pointer;font-weight:600;font-size:13px;background:var(--blue);color:white}.btn.secondary{background:#e8eef8;color:#263b5b}.btn.danger{background:#fee2e2;color:#991b1b}.btn.small{padding:7px 10px;font-size:12px}
+.panel{background:white;border:1px solid var(--line);border-radius:13px;padding:20px;margin-bottom:18px;box-shadow:0 2px 8px #172b4d08}
+.panel h2{font-size:17px;margin:0 0 5px}.sub{color:var(--muted);font-size:12px;margin:0 0 18px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+.field{display:flex;flex-direction:column;gap:6px}.field.full{grid-column:1/-1}label{font-size:12px;font-weight:650;color:#475569}
+input,select,textarea{width:100%;padding:10px 11px;border:1px solid #d8e0eb;border-radius:8px;background:white;color:#172033;font:13px Segoe UI,Arial;outline:none}
+input:focus,select:focus,textarea:focus{border-color:#6395ed;box-shadow:0 0 0 3px #2563eb14}textarea{min-height:75px;resize:vertical}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:17px}.section-title{font-size:14px;color:#1e3a5f;font-weight:750;border-bottom:1px solid var(--line);padding-bottom:9px;margin:22px 0 14px}
+.cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px;margin-bottom:18px}.stat{background:white;border:1px solid var(--line);border-radius:12px;padding:17px}.stat small{color:var(--muted);font-size:12px}.stat strong{display:block;font-size:27px;margin-top:7px}
+.table-wrap{overflow:auto}table{border-collapse:collapse;width:100%;font-size:12px;min-width:700px}th,td{text-align:left;padding:11px 10px;border-bottom:1px solid var(--line);vertical-align:middle}th{background:#f7f9fc;color:#526178;font-weight:700;white-space:nowrap}td{color:#334155}.pill{display:inline-block;padding:4px 8px;border-radius:30px;background:#eaf0fa;color:#35517a;font-size:11px;font-weight:700}.pill.green{background:#dcfce7;color:#166534}.pill.amber{background:#fef3c7;color:#92400e}.pill.red{background:#fee2e2;color:#991b1b}
+.toolbar{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-bottom:13px}.toolbar input{max-width:300px}.empty{padding:30px;text-align:center;color:var(--muted);font-size:13px}
+.notice{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;padding:12px;border-radius:9px;font-size:12px;margin-bottom:16px}
+.checklist{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.checkrow{display:flex;align-items:center;gap:8px;font-size:12px;color:#475569}.checkrow input{width:auto}
+.mobile-head{display:none}
+@media(max-width:900px){.sidebar{width:220px}.main{margin-left:220px;width:calc(100% - 220px);padding:22px 18px}.cards{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:650px){.sidebar{position:relative;width:100%;height:auto;inset:auto}.app{display:block}.brand{padding-bottom:12px;margin-bottom:8px}.nav{display:grid;grid-template-columns:repeat(2,1fr)}.nav-label{grid-column:1/-1}.side-foot{display:none}.main{margin:0;width:100%;padding:18px 12px}.topbar{align-items:flex-start;flex-direction:column}.grid,.grid.three,.checklist{grid-template-columns:1fr}.cards{grid-template-columns:repeat(2,1fr)}}
+.grid>.section-title{grid-column:1/-1}
+.mt td{white-space:nowrap}
+.mt table{table-layout:fixed;min-width:980px}.mt th:nth-child(1){width:40px}.mt th:nth-child(2){width:150px}.mt th:nth-child(3){width:110px}.mt th:nth-child(4){width:170px}.mt th:nth-child(9){width:100px}.mt th:nth-child(10){width:190px}.mt td{overflow:hidden;text-overflow:ellipsis}
+@media print{.sidebar,.top-actions,.toolbar,.actions{display:none!important}.main{margin:0;width:100%;padding:0}.panel{box-shadow:none;border:0}}
+
+.address-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.mini-card{border:1px solid var(--line);border-radius:10px;padding:12px;margin:8px 0}.mini-card h4{margin:0 0 9px;font-size:13px;color:#1e3a5f}.stamp{font-size:11px;color:#64748b;margin-top:4px}.signature-box{border:1px dashed #94a3b8;border-radius:8px;padding:10px;background:#f8fafc}.signature-pad{display:block;width:100%;height:135px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;touch-action:none;cursor:crosshair}.signature-tools{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:7px}.signature-hint{font-size:11px;color:#64748b}.child-grid{display:grid;grid-template-columns:2fr 1fr;gap:10px;margin:8px 0}
+@media(max-width:650px){.address-grid{grid-template-columns:1fr}}
+</style>
 </head>
 <body>
-  <main class="card">
-    <span class="tag">MY FIRST WEBSITE</span>
-    <h1>Welcome!</h1>
-    <p>This is a simple sample website built with HTML, CSS, and JavaScript.</p>
-    <button type="button" id="messageButton">Click Me</button>
-    <div id="clock" aria-live="polite"></div>
-    <footer>Made with HTML, CSS &amp; JavaScript</footer>
-  </main>
+<div class="app" id="mainApp">
+<aside class="sidebar">
+ <div class="brand"><h2>EMPLOYEE MANAGEMENT</h2><small>HR & Agency Manpower System</small></div>
+ <div class="nav-label">MAIN MODULES</div>
+ <nav class="nav" id="nav">
+  <button class="active" data-page="A"><span class="letter"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg></span> Personal Information</button>
+  <button data-page="B"><span class="letter"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 13h18"/></svg></span> Deployment Information</button>
+  <button data-page="C"><span class="letter"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8l-9-5-9 5v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg></span> Accountable Items</button>
+  <button data-page="D"><span class="letter"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6v3H9zM9 14l2 2 4-4"/></svg></span> Clearance Process</button>
+  <button data-page="E"><span class="letter"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span> Dashboard</button>
+  <button data-page="F"><span class="letter"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg></span> Masterlist</button>
+ </nav>
+ <div class="side-foot">Standalone local version<br>Records are saved in this browser.</div>
+</aside>
+<main class="main">
+ <header class="topbar"><div><div class="eyebrow">Human Resources / Agency Coordination</div><h1 id="pageTitle">Personal Information</h1></div><div class="top-actions"><button class="btn secondary" onclick="exportCSV()">Export Records</button><button class="btn" onclick="newRecord()">+ New Record</button><!-- TEMP-REMOVE-START --><button class="btn danger" onclick="clearAllRecords()">Clear All Records</button><!-- TEMP-REMOVE-END --></div></header>
+ <div id="content"></div>
+</main>
+</div>
+<script>
+const KEY='employeeManagementSystem_v1';
+let db=JSON.parse(localStorage.getItem(KEY)||'{"employees":[],"items":[]}');
+let page='A', editingId=null, currentBId=null;
+const $=id=>document.getElementById(id);
+const save=()=>localStorage.setItem(KEY,JSON.stringify(db));
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const val=id=>$(id)?.value?.trim()||'';
 
-  <script>
-    document.getElementById("messageButton").addEventListener("click", function () {
-      alert("Congratulations! Your website is working!");
-    });
+const today=()=>new Date().toISOString().slice(0,10);
 
-    function updateClock() {
-      document.getElementById("clock").textContent =
-        "Date & Time: " + new Date().toLocaleString();
-    }
+let currentUser=null;
+function visibleEmployees(){return db.employees;}
 
-    updateClock();
-    setInterval(updateClock, 1000);
-  </script>
+const idgen=()=> 'EMP-'+new Date().getFullYear()+'-'+Math.random().toString(36).slice(2,7).toUpperCase();
+function setPage(p){page=p;editingId=null;document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===p));render()}
+$('nav').addEventListener('click',e=>{let b=e.target.closest('button[data-page]');if(b)setPage(b.dataset.page)});
+function field(label,id,type='text',opts=null,full=false){let control=opts?`<select id="${id}"><option value="">Select ${label}</option>${opts.map(x=>`<option>${esc(x)}</option>`).join('')}</select>`:`<input id="${id}" type="${type}" ${type==='date'?'':''}>`;return `<div class="field ${full?'full':''}"><label for="${id}">${label}</label>${control}</div>`}
+function area(label,id,full=true){return `<div class="field ${full?'full':''}"><label>${label}</label><textarea id="${id}"></textarea></div>`}
+function section(t){return `<div class="section-title">${t}</div>`}
+function employee(){return db.employees.find(x=>x.id===editingId)}
+function render(){
+ const titles={A:'Personal Information',B:'Deployment Information',C:'Accountable Items',D:'Clearance Process',E:'Dashboard',F:'Masterlist'};
+ $('pageTitle').textContent=titles[page];
+ ({A:renderB,B:renderA,C:renderC,D:renderD,E:renderE,F:renderF}[page])();
+}
+function renderA(){
+ let x=employee()||{};
+ const approvalSteps=[['screening','Initial Screening',['Pending','Passed','Failed']],['interview','Interview Results',['Pending','Passed','Failed']],['medical','Medical Examination',['Pending','Fit to Work','Unfit','Not Applicable']],['hrApproval','HR Approval',['Pending','Approved','Disapproved']],['dhApproval',"Department Head's Approval",['Pending','Approved','Disapproved']]];
+ const reqs=['Resume','Valid ID','ID Picture','Health Card','SSS','PAG-IBIG','PhilHealth','PhilHealth YAKAP'];
+ const trainings=['Food Safety Orientation','GMP and Personal Hygiene','Occupational Safety','Company Policies','Food Defense','Food Fraud','Food Safety Culture','Animal Health and Welfare','HACCP'];
+ $('content').innerHTML=`<div class="notice">Track the applicant from agency deployment through approval, requirements, orientation, onboarding, active employment and separation. Automatic timestamps are recorded when a step is completed or signed.</div>
+ <div class="panel"><h2>Deployment & Employment Processing</h2><p class="sub">Create or update an applicant / employee record. Tracking number is generated automatically.</p><div class="grid">
+ ${field('Employee Tracking Number','tracking')}${field('Agency Name','agency','text',AGENCIES)}${field("Agency Coordinator's Name",'coordinator')}${field('Deployment Date','deploymentDate','date')}${field('Department / Assigned Area','department')}${field('Position Desired','position')}
+ </div>${section('Application & Approval')}<div class="grid">${field('Application Date','applicationDate','date')}${field('Application Status','applicationStatus','text',['For Screening','For Interview','For Medical','For HR Approval','For Department Head Approval','Approved','Disapproved'])}
+ ${approvalSteps.map(([id,label,opts])=>`<div class="mini-card"><div class="field"><label>${label}</label><select id="${id}" data-approval-step="${id}"><option value="">Select status</option>${opts.map(o=>`<option>${o}</option>`).join('')}</select><div class="stamp" id="stamp-${id}"></div></div></div>`).join('')}
+ ${field('Position Granted / Assigned Position','grantedPosition')}${area('Approval Remarks','approvalRemarks')}</div>
+ ${section('Requirements Compliance')}<p class="sub">Tick each requirement when received/verified. The date and time are captured automatically.</p><div class="grid">${reqs.map((n,i)=>`<div class="mini-card"><label class="checkrow"><input type="checkbox" class="req" data-req="${n}" value="${n}"> <b>${n}</b></label><div class="stamp" id="reqstamp-${i}"></div></div>`).join('')}</div>
+ <div class="grid" style="margin-top:14px">${field('Verification Status','verification','text',['Pending','Verified','With Pending Requirements'])}${area('Pending Requirements','pendingRequirements')}${field('Requirement Expiration Date (if applicable)','expirationDate','date')}</div>
+ ${section('Orientation & Training')}<div class="grid">${field('Attendance','attendance','text',['Pending','Present','Absent'])}${field('Orientation Completion','orientationCompletion','text',['Pending','Completed'])}</div>
+ ${trainings.map((n,i)=>`<div class="mini-card"><h4>${n}</h4><label class="checkrow"><input type="checkbox" class="orient" data-training="${n}" value="${n}"> Training Completed</label><div class="grid" style="margin-top:9px"><div class="field"><label>Date</label><input type="date" id="train-date-${i}"></div><div class="field"><label>Time</label><input type="time" id="train-time-${i}"></div><div class="field full"><label>Conducted By</label><input id="train-by-${i}" placeholder="Name of trainer / facilitator"></div></div><div class="stamp" id="train-stamp-${i}"></div></div>`).join('')}
+ ${section('Onboarding & Active Employment')}<div class="grid">${field('Department / Section','onboardDepartment')}${field('Position','onboardPosition')}${field('Assigned Team Leader','teamLeader')}${field('Start Date','startDate','date')}${field('Agency Deployment Confirmation','deploymentConfirmation','text',['Pending','Confirmed'])}${field('Employment Status','employmentStatus','text',['Applicant','For Onboarding','Active','Separated'])}</div>
+ ${section('Separation')}<div class="grid">${field('Separation Date','separationDate','date')}${field('Reason for Separation','separationReason','text',['Resignation','Termination','End of Contract','AWOL','Transferred to Other Company','Others'])}${field('Clearance Status','clearanceStatus','text',['Not Started','In Progress','Cleared','With Pending Accountability'])}${area('Separation Remarks','separationRemarks')}</div>
+ <div class="actions"><button class="btn" onclick="saveA()">Save Employee Record</button><button class="btn secondary" onclick="clearForm()">Clear Form</button></div></div><div class="panel"><h2>Applicant / Employee Records</h2><p class="sub">Select Edit to load a record into the form.</p>${recordsTable()}</div>`;
+ const fields=['tracking','agency','coordinator','deploymentDate','department','position','applicationDate','applicationStatus','screening','interview','medical','hrApproval','dhApproval','grantedPosition','approvalRemarks','verification','pendingRequirements','expirationDate','attendance','orientationCompletion','onboardDepartment','onboardPosition','teamLeader','startDate','deploymentConfirmation','employmentStatus','separationDate','separationReason','clearanceStatus','separationRemarks'];
+ fields.forEach(k=>{if($(k))$(k).value=x[k]||''}); if(!x.tracking)$('tracking').value=idgen();
+ if(x.agency&&!AGENCIES.includes(x.agency)){let o=document.createElement('option');o.textContent=x.agency;$('agency').appendChild(o);$('agency').value=x.agency}
+ document.querySelectorAll('.req').forEach((el,i)=>{el.checked=!!x.requirementDates?.[el.value]||!!x.requirements?.includes(el.value);$('reqstamp-'+i).textContent=x.requirementDates?.[el.value]?'Recorded: '+x.requirementDates[el.value]:'';el.addEventListener('change',()=>{if(el.checked){el.dataset.changedAt=new Date().toISOString();$('reqstamp-'+i).textContent='Will record: '+new Date().toLocaleString()}else $('reqstamp-'+i).textContent='Not checked'})});
+ approvalSteps.forEach(([id])=>{let el=$(id);if(el){el.value=x[id]||'';$('stamp-'+id).textContent=x.approvalTimestamps?.[id]?'Updated: '+new Date(x.approvalTimestamps[id]).toLocaleString():'';el.addEventListener('change',()=>{$('stamp-'+id).textContent='Will record: '+new Date().toLocaleString()})}});
+ trainings.forEach((n,i)=>{let t=x.trainingDetails?.[n]||{};let cb=document.querySelector(`.orient[data-training="${n}"]`);cb.checked=!!t.completed||!!x.orientation?.includes(n);$('train-date-'+i).value=t.date||'';$('train-time-'+i).value=t.time||'';$('train-by-'+i).value=t.conductedBy||'';$('train-stamp-'+i).textContent=t.recordedAt?'Recorded: '+new Date(t.recordedAt).toLocaleString():'';cb.addEventListener('change',()=>{$('train-stamp-'+i).textContent=cb.checked?'Will record completion when saved':'Not completed'})});
+}
+function saveA(){
+ let data={};['tracking','agency','coordinator','deploymentDate','department','position','applicationDate','applicationStatus','screening','interview','medical','hrApproval','dhApproval','grantedPosition','approvalRemarks','verification','pendingRequirements','expirationDate','attendance','orientationCompletion','onboardDepartment','onboardPosition','teamLeader','startDate','deploymentConfirmation','employmentStatus','separationDate','separationReason','clearanceStatus','separationRemarks'].forEach(k=>data[k]=val(k));
+ let old=employee()||{},now=new Date().toISOString();data.approvalTimestamps={...(old.approvalTimestamps||{})};['screening','interview','medical','hrApproval','dhApproval'].forEach(k=>{if(data[k]&&data[k]!==old[k])data.approvalTimestamps[k]=now});
+ data.requirementDates={...(old.requirementDates||{})};data.requirements=[...document.querySelectorAll('.req:checked')].map(e=>e.value);document.querySelectorAll('.req').forEach(e=>{if(e.checked&&!data.requirementDates[e.value])data.requirementDates[e.value]=e.dataset.changedAt||now;if(!e.checked)delete data.requirementDates[e.value]});
+ data.trainingDetails={...(old.trainingDetails||{})};data.orientation=[];document.querySelectorAll('.orient').forEach((e,i)=>{let n=e.value;if(e.checked){data.orientation.push(n);data.trainingDetails[n]={completed:true,date:$('train-date-'+i).value,time:$('train-time-'+i).value,conductedBy:val('train-by-'+i),recordedAt:old.trainingDetails?.[n]?.recordedAt||now}}else if(data.trainingDetails[n])data.trainingDetails[n]={...data.trainingDetails[n],completed:false}});
+ if(currentUser?.role==='agency')data.agency=currentUser.agency;if(!data.tracking)data.tracking=idgen();
+ if(editingId){let i=db.employees.findIndex(x=>x.id===editingId);db.employees[i]={...db.employees[i],...data,updatedAt:now}}else db.employees.push({id:crypto.randomUUID?crypto.randomUUID():String(Date.now()),...data,createdAt:now});save();editingId=null;alert('Employee record saved successfully.');renderA();
+}
+function recordsTable(){let employees=visibleEmployees();if(!employees.length)return '<div class="empty">No employee records yet. Create your first record above.</div>';return `<div class="toolbar"><input id="searchA" placeholder="Search name, tracking no., agency..." oninput="filterTable('tableA',this.value)"></div><div class="table-wrap"><table id="tableA"><thead><tr><th>Tracking No.</th><th>Name</th><th>Agency</th><th>Department</th><th>Position</th><th>Status</th><th>Action</th></tr></thead><tbody>${employees.map(x=>`<tr><td>${esc(x.tracking)}</td><td>${esc([x.firstName,x.middleName,x.surname].filter(Boolean).join(' ')||x.fullName||'—')}</td><td>${esc(x.agency)}</td><td>${esc(x.department||x.onboardDepartment)}</td><td>${esc(x.position||x.onboardPosition)}</td><td><span class="pill">${esc(x.employmentStatus||x.applicationStatus||'Applicant')}</span></td><td><button class="btn small secondary" onclick="editRecord('${x.id}')">Edit</button> <button class="btn small danger" onclick="deleteRecord('${x.id}')">Delete</button></td></tr>`).join('')}</tbody></table></div>`}
+const PH_PROVINCES=['Abra','Agusan del Norte','Agusan del Sur','Aklan','Albay','Antique','Apayao','Aurora','Basilan','Bataan','Batanes','Batangas','Benguet','Biliran','Bohol','Bukidnon','Bulacan','Cagayan','Camarines Norte','Camarines Sur','Camiguin','Capiz','Catanduanes','Cavite','Cebu','Cotabato','Davao de Oro','Davao del Norte','Davao del Sur','Davao Occidental','Davao Oriental','Dinagat Islands','Eastern Samar','Guimaras','Ifugao','Ilocos Norte','Ilocos Sur','Iloilo','Isabela','Kalinga','La Union','Laguna','Lanao del Norte','Lanao del Sur','Leyte','Maguindanao del Norte','Maguindanao del Sur','Marinduque','Masbate','Misamis Occidental','Misamis Oriental','Mountain Province','Negros Occidental','Negros Oriental','Northern Samar','Nueva Ecija','Nueva Vizcaya','Occidental Mindoro','Oriental Mindoro','Palawan','Pampanga','Pangasinan','Quezon','Quirino','Rizal','Romblon','Samar','Sarangani','Siquijor','Sorsogon','South Cotabato','Southern Leyte','Sultan Kudarat','Sulu','Surigao del Norte','Surigao del Sur','Tarlac','Tawi-Tawi','Zambales','Zamboanga del Norte','Zamboanga del Sur','Zamboanga Sibugay','Metro Manila'];
+const CITY_FALLBACK={'Metro Manila':['Caloocan','Las Piñas','Makati','Malabon','Mandaluyong','Manila','Marikina','Muntinlupa','Navotas','Parañaque','Pasay','Pasig','Pateros','Quezon City','San Juan','Taguig','Valenzuela'],'Laguna':['Biñan','Cabuyao','Calamba','San Pablo','San Pedro','Santa Rosa','Alaminos','Bay','Calauan','Cavinti','Famy','Kalayaan','Liliw','Los Baños','Luisiana','Lumban','Mabitac','Magdalena','Majayjay','Nagcarlan','Paete','Pagsanjan','Pakil','Pangil','Pila','Rizal','Santa Cruz','Santa Maria','Siniloan','Victoria'],'Cavite':['Bacoor','Cavite City','Dasmariñas','General Trias','Imus','Tagaytay','Trece Martires','Alfonso','Amadeo','Carmona','General Emilio Aguinaldo','General Mariano Alvarez','Indang','Kawit','Magallanes','Maragondon','Mendez','Naic','Noveleta','Rosario','Silang','Tanza','Ternate'],'Rizal':['Antipolo','Angono','Baras','Binangonan','Cainta','Cardona','Jalajala','Morong','Pililla','Rodriguez','San Mateo','Tanay','Taytay','Teresa']};
+const cityCache={};
+async function loadCities(province,selectId){let sel=$(selectId);if(!sel)return;sel.innerHTML='<option value="">Loading towns/cities…</option>';let cities=CITY_FALLBACK[province];try{if(!cities){let provinces=await fetch('https://psgc.gitlab.io/api/provinces/').then(r=>r.json());let p=provinces.find(x=>x.name.toLowerCase()===province.toLowerCase());if(p){let list=await fetch(`https://psgc.gitlab.io/api/provinces/${p.code}/cities-municipalities/`).then(r=>r.json());cities=list.map(x=>x.name).sort()}}}catch(e){}cities=cities||[];sel.innerHTML='<option value="">Select Town / City</option>'+cities.map(n=>`<option>${esc(n)}</option>`).join('');if(!cities.length)sel.innerHTML='<option value="">Town/city list unavailable — enter below</option>';}
+function addressFields(prefix,title,x){return `${section(title)}<div class="grid"><div class="field"><label>Province</label><select id="${prefix}Province" onchange="loadCities(this.value,'${prefix}City')"><option value="">Select Province</option>${PH_PROVINCES.map(n=>`<option>${n}</option>`).join('')}</select></div><div class="field"><label>Town / City</label><select id="${prefix}City"><option value="">Select Province First</option></select></div>${field('Barangay',prefix+'Barangay')}${field('House Number & Street',prefix+'Street')}</div>`}
+function renderB(){let x=db.employees.find(z=>z.id===currentBId)||{};$('content').innerHTML=`<div class="panel"><h2>Personal Information Form</h2><p class="sub">Start with the personal information. Address town/city lists load based on the selected province.</p><div class="grid"><div class="field full"><label>Select Employee Record</label><select id="bEmployeePick" onchange="loadB(this.value)"><option value="">+ New record</option>${visibleEmployees().map(z=>`<option value="${z.id}" ${z.id===currentBId?'selected':''}>${esc(z.tracking)} — ${esc([z.firstName,z.surname].filter(Boolean).join(' ')||z.agency||'New record')}</option>`).join('')}</select></div>${field('Employment Category','personType','text',['Newly Hired','Re-hire','Existing Employee'])}${field('Application Type','applicationType','text',['Walk-in','Referral','From Agency','From EMHCO'])}${field('Referring Employee Name','referralName')}${field('Employee Tracking Number','bTracking')}${section('Personal Information')}${field('Surname','surname')}${field('First Name','firstName')}${field('Middle Name','middleName')}${field('Birthday','birthday','date')}${field('Gender','gender','text',['Male','Female','Prefer not to say'])}${field('Civil Status','civilStatus','text',['Single','Married','Widowed','Separated'])}</div>${addressFields('cur','Current Address',x)}${addressFields('per','Permanent Address',x)}<div class="actions"><button class="btn secondary" onclick="copyCurrentAddress()">Same as Current Address</button></div>
+ ${section('Family Information')}<div class="grid">${field("Mother's Name",'motherName')}${field("Mother's Age",'motherAge','number')}${field("Father's Name",'fatherName')}${field("Father's Age",'fatherAge','number')}${field('Spouse Name','spouseName')}${field('Spouse Age','spouseAge','number')}</div><div class="section-title">Children (Maximum 8)</div>${Array.from({length:8},(_,i)=>`<div class="child-grid"><div class="field"><label>Child ${i+1} Name</label><input id="childName${i+1}"></div><div class="field"><label>Age</label><input id="childAge${i+1}" type="number" min="0"></div></div>`).join('')}
+ ${section('Educational Attainment')}<div class="checklist">${['College Graduate','College Level','High School Graduate','Others'].map(n=>`<label class="checkrow"><input type="checkbox" class="educationCheck" value="${n}"> ${n}</label>`).join('')}</div><div class="grid" style="margin-top:12px">${field('Degree Program','degreeProgram')}${field('Year Graduated','yearGraduated')}</div>
+ ${section('Previous Employment')}<div class="grid">${field('Company Name','previousCompany')}${field('Employment Period','employmentPeriod')}</div>
+ <div class="actions"><button class="btn" onclick="saveB()">Save Personal Information</button><button class="btn secondary" onclick="setPage('A')">Next: Deployment Information</button></div></div>`;
+ const fields=['personType','applicationType','referralName','bTracking','surname','firstName','middleName','birthday','gender','civilStatus','curProvince','curCity','curBarangay','curStreet','perProvince','perCity','perBarangay','perStreet','motherName','motherAge','fatherName','fatherAge','spouseName','spouseAge','degreeProgram','yearGraduated','previousCompany','employmentPeriod'];fields.forEach(k=>{if($(k))$(k).value=x[k]||''});$('bTracking').value=x.tracking||x.bTracking||idgen();
+ ['cur','per'].forEach(async prefix=>{let prov=x[prefix+'Province']||'';if(prov){$(prefix+'Province').value=prov;await loadCities(prov,prefix+'City');$(prefix+'City').value=x[prefix+'City']||''}});
+ (x.childrenList||[]).forEach((c,i)=>{if(i<8){$('childName'+(i+1)).value=c.name||'';$('childAge'+(i+1)).value=c.age||''}});document.querySelectorAll('.educationCheck').forEach(e=>e.checked=(x.educationTypes||[]).includes(e.value));
+}
+function copyCurrentAddress(){['Province','City','Barangay','Street'].forEach(k=>{let a=$('cur'+k),b=$('per'+k);if(a&&b){b.value=a.value;if(k==='Province')loadCities(a.value,'perCity').then(()=>{$('perCity').value=$('curCity').value})}})}
+function loadB(id){currentBId=id||null;renderB()}
+function saveB(){let x=db.employees.find(z=>z.id===currentBId);if(!x){x={id:crypto.randomUUID?crypto.randomUUID():String(Date.now()),tracking:val('bTracking')||idgen(),createdAt:new Date().toISOString()};db.employees.push(x);currentBId=x.id}['personType','applicationType','referralName','bTracking','surname','firstName','middleName','birthday','gender','civilStatus','curProvince','curCity','curBarangay','curStreet','perProvince','perCity','perBarangay','perStreet','motherName','motherAge','fatherName','fatherAge','spouseName','spouseAge','degreeProgram','yearGraduated','previousCompany','employmentPeriod'].forEach(k=>x[k]=val(k));x.childrenList=Array.from({length:8},(_,i)=>({name:val('childName'+(i+1)),age:val('childAge'+(i+1))})).filter(c=>c.name||c.age);x.educationTypes=[...document.querySelectorAll('.educationCheck:checked')].map(e=>e.value);x.tracking=x.tracking||x.bTracking;save();alert('Personal information saved.');renderB()}
+
+function renderC(){let x=employee()||{};$('content').innerHTML=`<div class="panel"><h2>Issuance of Accountable Items</h2><p class="sub">Record issued property, quantity and condition. Link each issuance to an employee tracking number.</p><div class="grid">${field('Employee','itemEmployee','text',db.employees.map(x=>`${x.tracking} — ${x.firstName||''} ${x.surname||''}`))}${field('Issuance Date','issueDate','date')}${field('Item','itemName','text',['Tablet (Gadget)','Stopwatch','Company ID','Cellphone','Vehicle Pass/Sticker','Freezer Jacket','Freezer Pants','Thermometer','Others'])}${field('Other Item (if applicable)','otherItem')}${field('Quantity','itemQty','number')}${field('Condition','itemCondition','text',['New','Good','Fair','Damaged'])}${area('Remarks','itemRemarks')}</div><div class="actions"><button class="btn" onclick="saveItem()">Save Issuance</button></div></div><div class="panel"><h2>Issuance Records</h2>${itemsTable()}</div>`;$('issueDate').value=today()}
+function saveItem(){if(!val('itemEmployee')){alert('Select an employee.');return}db.items.push({id:String(Date.now()),employee:val('itemEmployee'),date:val('issueDate'),item:val('itemName')==='Others'?val('otherItem'):val('itemName'),qty:val('itemQty'),condition:val('itemCondition'),remarks:val('itemRemarks'),returned:false});save();alert('Accountable item issuance saved.');renderC()}
+function itemsTable(){if(!db.items.length)return '<div class="empty">No accountable items issued yet.</div>';return `<div class="table-wrap"><table><thead><tr><th>Employee</th><th>Date</th><th>Item</th><th>Qty</th><th>Condition</th><th>Return Status</th><th>Action</th></tr></thead><tbody>${db.items.map(x=>`<tr><td>${esc(x.employee)}</td><td>${esc(x.date)}</td><td>${esc(x.item)}</td><td>${esc(x.qty)}</td><td>${esc(x.condition)}</td><td><span class="pill ${x.returned?'green':'amber'}">${x.returned?'Returned':'Not yet returned'}</span></td><td><button class="btn small secondary" onclick="toggleReturn('${x.id}')">${x.returned?'Undo':'Mark Returned'}</button></td></tr>`).join('')}</tbody></table></div>`}
+function toggleReturn(id){let x=db.items.find(x=>x.id===id);x.returned=!x.returned;save();renderC()}
+function renderD(){const returnItems=['Tablet (Gadget)','Stopwatch','Company ID','Cellphone','Vehicle Pass/Sticker','Freezer Jacket','Freezer Pants','Thermometer','Others'];$('content').innerHTML=`<div class="panel"><h2>Employee Clearance Process</h2><p class="sub">Record returned items, receiver details and signatory signatures. Date/time is automatically captured when a signature is entered.</p><div class="grid">${field('Employee','clearEmployee','text',db.employees.map(x=>`${x.tracking} — ${x.firstName||''} ${x.surname||''}`))}${field('Clearance Application Date','clearDate','date')}${field('Full Name','clearName')}${field('Area of Assignment','clearArea')}${field('Date Hired','dateHired','date')}${field('Last Date of Duty','lastDuty','date')}${field('Reason for Separation','clearReason','text',['AWOL','Resigned','Transferred to Other Company','End of Contract','Others'])}${area('Other Reason / Remarks','clearOther')}</div>${section('Returned Accountable Items — Quantity & Condition')}<div class="grid">${returnItems.map((n,i)=>`<div class="mini-card"><label class="checkrow"><input type="checkbox" class="returnedItem" value="${n}"> <b>${n}</b></label><div class="grid" style="margin-top:8px"><div class="field"><label>Returned Quantity</label><input id="retQty${i}" type="number" min="0"></div><div class="field"><label>Condition</label><select id="retCond${i}"><option value="">Select</option><option>Good</option><option>Fair</option><option>Damaged</option><option>Not Applicable</option></select></div></div></div>`).join('')}</div>${section('Received By')}<div class="grid"><div class="field"><label>Name of Receiver</label><input id="receivedBy" placeholder="Printed name"></div><div class="field"><label>Receiver Actual Signature</label><canvas id="receiverCanvas" class="signature-pad" aria-label="Receiver signature pad"></canvas><div class="signature-tools"><span class="signature-hint">Sign here using mouse or finger</span><button type="button" class="btn small secondary" onclick="clearSignaturePad('receiverCanvas','receiverStamp')">Clear</button></div><div class="stamp" id="receiverStamp">Not yet signed</div></div></div>${section('Signatory Clearance')}<div class="notice">Each signatory must draw their actual signature in the box using a mouse, stylus, or finger on a touchscreen. The exact date and time will be captured when they finish signing.</div><div class="grid">${['MHC - Human Resource','MHC - Accounting','MHC - Department Head','MHC - Operations Manager','Agency - Industrial Coordinator','Agency - Accounting','Agency - Human Resource'].map((n,i)=>`<div class="mini-card"><h4>${n}</h4><div class="field"><label>Status</label><select id="sig${i}"><option value="">Select status</option><option>Cleared</option><option>With Pending Accountability</option><option>Not Applicable</option></select><label>Printed Name</label><input id="sigPrintedName${i}" placeholder="Signatory full name"><label>Actual Signature</label><canvas id="sigCanvas${i}" class="signature-pad" aria-label="${n} signature pad"></canvas><div class="signature-tools"><span class="signature-hint">Sign here using mouse or finger</span><button type="button" class="btn small secondary" onclick="clearSignaturePad('sigCanvas${i}','sigStamp${i}')">Clear</button></div><div class="stamp" id="sigStamp${i}">Not yet signed</div><label>Remarks</label><input id="sigRemark${i}" placeholder="Remarks"></div></div>`).join('')}</div><div class="actions"><button class="btn" onclick="saveClearance()">Save Clearance</button></div></div><div class="panel"><h2>Clearance Records</h2><div id="clearanceList">${clearanceTable()}</div></div>`;$('clearDate').value=today();initSignaturePad('receiverCanvas','receiverStamp');for(let i=0;i<7;i++)initSignaturePad('sigCanvas'+i,'sigStamp'+i)}
+function initSignaturePad(canvasId,stampId){const c=$(canvasId);if(!c)return;const ctx=c.getContext('2d');const rect=c.getBoundingClientRect();const ratio=Math.max(window.devicePixelRatio||1,1);c.width=Math.max(1,rect.width*ratio);c.height=Math.max(1,rect.height*ratio);ctx.scale(ratio,ratio);ctx.lineWidth=2.2;ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle='#172033';let drawing=false,hasInk=false;const pos=e=>{const r=c.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top}};c.addEventListener('pointerdown',e=>{e.preventDefault();drawing=true;c.setPointerCapture(e.pointerId);const p=pos(e);ctx.beginPath();ctx.moveTo(p.x,p.y)});c.addEventListener('pointermove',e=>{if(!drawing)return;e.preventDefault();const p=pos(e);ctx.lineTo(p.x,p.y);ctx.stroke();hasInk=true});const finish=()=>{if(!drawing)return;drawing=false;if(hasInk){c.dataset.signedAt=new Date().toISOString();c.dataset.hasSignature='1';const stamp=$(stampId);if(stamp)stamp.textContent='Signed: '+new Date(c.dataset.signedAt).toLocaleString()}};c.addEventListener('pointerup',finish);c.addEventListener('pointercancel',finish);c.addEventListener('pointerleave',e=>{if(e.buttons===0)finish()});c.dataset.hasSignature='0'}
+function clearSignaturePad(canvasId,stampId){const c=$(canvasId),stamp=$(stampId);if(!c)return;c.getContext('2d').clearRect(0,0,c.width,c.height);c.dataset.hasSignature='0';c.dataset.signedAt='';if(stamp)stamp.textContent='Not yet signed'}
+function signatureData(canvasId){const c=$(canvasId);return c&&c.dataset.hasSignature==='1'?c.toDataURL('image/png'):''}
+function clearanceTable(){let a=db.employees.filter(x=>x.clearance);if(!a.length)return '<div class="empty">No clearance records yet.</div>';return `<div class="table-wrap"><table><thead><tr><th>Employee</th><th>Application Date</th><th>Reason</th><th>Last Duty</th><th>Overall Status</th></tr></thead><tbody>${a.map(x=>`<tr><td>${esc(x.tracking)} — ${esc(x.clearName)}</td><td>${esc(x.clearance.date)}</td><td>${esc(x.clearance.reason)}</td><td>${esc(x.clearance.lastDuty)}</td><td><span class="pill">${esc(x.clearance.status)}</span></td></tr>`).join('')}</tbody></table></div>`}
+function saveClearance(){let chosen=val('clearEmployee');let emp=db.employees.find(x=>chosen.startsWith(x.tracking));if(!emp){alert('Select a valid employee.');return}let sign=[];for(let i=0;i<7;i++){let canvas=$('sigCanvas'+i),old=emp.clearance?.sign?.[i]||{},image=signatureData('sigCanvas'+i),signedAt=image?(canvas.dataset.signedAt||new Date().toISOString()):'';sign.push({status:val('sig'+i),name:val('sigPrintedName'+i),signature:image,signatureData:image,signedAt,remarks:val('sigRemark'+i)})}let statuses=sign.map(x=>x.status);let status=statuses.every(x=>x==='Cleared'||x==='Not Applicable')?'Cleared':statuses.some(x=>x==='With Pending Accountability')?'With Pending Accountability':'In Progress';let returned=[];document.querySelectorAll('.returnedItem').forEach((e,i)=>{if(e.checked)returned.push({item:e.value,qty:val('retQty'+i),condition:val('retCond'+i)})});let receiverImage=signatureData('receiverCanvas'),receiverCanvas=$('receiverCanvas');emp.clearance={date:val('clearDate'),name:val('clearName'),area:val('clearArea'),dateHired:val('dateHired'),lastDuty:val('lastDuty'),reason:val('clearReason'),other:val('clearOther'),returned,receivedBy:val('receivedBy'),receiverSignature:receiverImage,receiverSignatureData:receiverImage,receiverSignedAt:receiverImage?(receiverCanvas.dataset.signedAt||new Date().toISOString()):'',sign,status};emp.separationDate=val('lastDuty');emp.separationReason=val('clearReason');emp.clearanceStatus=status;emp.employmentStatus='Separated';save();alert('Clearance record saved with actual signature images and signing timestamps.');renderD()}
+
+function renderE(){let all=visibleEmployees(), count=s=>all.filter(x=>(x.employmentStatus||'Applicant')===s).length;let apps=all.length, approvals=all.filter(x=>x.applicationStatus==='Approved').length, req=all.filter(x=>x.verification==='Verified').length, orient=all.filter(x=>x.orientationCompletion==='Completed').length, active=count('Active'), separated=count('Separated');$('content').innerHTML=`<div class="cards">${[['Total Applicants',apps],['Approved',approvals],['Requirements Verified',req],['Orientation Completed',orient],['For Onboarding',count('For Onboarding')],['Active Employees',active],['Separated',separated],['Accountable Items',db.items.length]].map(([n,v])=>`<div class="stat"><small>${n}</small><strong>${v}</strong></div>`).join('')}</div><div class="panel"><h2>Employee Application Status</h2><p class="sub">Overview of records by current employment status.</p>${dashboardTable()}</div><div class="panel"><h2>Monitoring Overview</h2><div class="grid three">${[['Application Monitoring',all.filter(x=>x.applicationDate).length],['Approval Monitoring',all.filter(x=>x.applicationStatus).length],['Requirements Monitoring',all.filter(x=>x.verification).length],['Orientation Monitoring',all.filter(x=>x.orientationDate).length],['Onboarding Monitoring',all.filter(x=>x.startDate).length],['Active Monitoring',active],['Separated Monitoring',separated]].map(([n,v])=>`<div class="stat"><small>${n}</small><strong>${v}</strong></div>`).join('')}</div></div>`}
+function dashboardTable(){let employees=visibleEmployees();if(!employees.length)return '<div class="empty">No records to monitor.</div>';return `<div class="table-wrap"><table><thead><tr><th>Tracking No.</th><th>Employee</th><th>Agency</th><th>Department</th><th>Application</th><th>Requirements</th><th>Employment</th></tr></thead><tbody>${employees.map(x=>`<tr><td>${esc(x.tracking)}</td><td>${esc([x.firstName,x.middleName,x.surname].filter(Boolean).join(' ')||'—')}</td><td>${esc(x.agency)}</td><td>${esc(x.department||x.onboardDepartment)}</td><td>${esc(x.applicationStatus||'Pending')}</td><td>${esc(x.verification||'Pending')}</td><td>${esc(x.employmentStatus||'Applicant')}</td></tr>`).join('')}</tbody></table></div>`}
+function editRecord(id){page='B';document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.page==='B'));editingId=id;render();window.scrollTo(0,0)}
+function deleteRecord(id){if(confirm('Delete this employee record? This cannot be undone.')){db.employees=db.employees.filter(x=>x.id!==id);save();renderA()}}
+function clearForm(){editingId=null;renderA()}
+function newRecord(){editingId=null;currentBId=null;setPage('A')}
+function filterTable(id,q){let t=$(id);if(!t)return;[...t.tBodies[0].rows].forEach(r=>r.style.display=r.innerText.toLowerCase().includes(q.toLowerCase())?'':'none')}
+function exportCSV(){let rows=[['Tracking Number','Surname','First Name','Middle Name','Agency','Coordinator','Deployment Date','Department','Position','Application Status','Requirements Status','Orientation','Employee Number','Start Date','Employment Status','Separation Date','Separation Reason'],...db.employees.map(x=>[x.tracking,x.surname,x.firstName,x.middleName,x.agency,x.coordinator,x.deploymentDate,x.department,x.position,x.applicationStatus,(x.requirements||[]).join('; '),x.orientationCompletion,x.employeeNumber,x.startDate,x.employmentStatus,x.separationDate,x.separationReason])];let csv=rows.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',')).join('\r\n');let blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});let a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='Employee_Management_Records.csv';a.click();URL.revokeObjectURL(a.href)}
+
+const AGENCIES=['Top Jinzai','Workbridge','Multi Career'];
+let masterTab='All', masterQ='', masterAgency='';
+const empStatus=x=>x.employmentStatus||'Applicant';
+const fullName=x=>{let a=[x.firstName,x.middleName].filter(Boolean).join(' ');return (x.surname?x.surname+(a?', ':''):'')+a||x.fullName||'—'};
+const agencyOf=x=>x.agency||'No Agency';
+const agencyRank=n=>{let i=AGENCIES.indexOf(n);return i>=0?i:n==='No Agency'?999:100};
+const TABS={All:()=>true,Applicants:x=>['Applicant','For Onboarding'].includes(empStatus(x)),Active:x=>empStatus(x)==='Active',Separated:x=>empStatus(x)==='Separated'};
+function agencyRows(){return masterAgency?db.employees.filter(x=>agencyOf(x)===masterAgency):[]}
+function masterRows(){
+ let q=masterQ.toLowerCase();
+ return agencyRows().filter(TABS[masterTab]).filter(x=>!q||[x.tracking,x.employeeNumber,x.employeeId,fullName(x),x.department,x.onboardDepartment,x.position,x.onboardPosition,x.teamLeader].join(' ').toLowerCase().includes(q)).sort((a,b)=>fullName(a).localeCompare(fullName(b)));
+}
+function masterTable(){
+ if(!masterAgency)return '<div class="empty">Select an agency above to view its list of employees.</div>';
+ let r=masterRows();
+ if(!r.length)return '<div class="empty">No records found for '+esc(masterAgency)+'.</div>';
+ return `<div class="table-wrap"><table><thead><tr><th>#</th><th>Tracking No.</th><th>Full Name</th><th>Department</th><th>Position</th><th>Application</th><th>Status</th><th>Start Date</th><th>Action</th></tr></thead><tbody>${r.map((x,i)=>`<tr><td>${i+1}</td><td>${esc(x.tracking)}</td><td><b>${esc(fullName(x))}</b></td><td>${esc(x.onboardDepartment||x.department||'—')}</td><td>${esc(x.onboardPosition||x.position||'—')}</td><td>${esc(x.applicationStatus||'Pending')}</td><td><span class="pill ${empStatus(x)==='Active'?'green':empStatus(x)==='Separated'?'amber':''}">${esc(empStatus(x))}</span></td><td>${esc(x.startDate||'—')}</td><td style="white-space:nowrap"><button class="btn small secondary" onclick="editPersonal('${x.id}')">Personal</button> <button class="btn small secondary" onclick="editRecord('${x.id}')">Deployment</button></td></tr>`).join('')}</tbody></table></div>`;
+}
+function renderF(){
+ let names=[...AGENCIES,...new Set(db.employees.map(agencyOf).filter(n=>!AGENCIES.includes(n)))];
+ let cnt=n=>db.employees.filter(x=>agencyOf(x)===n).length;
+ let ar=agencyRows(),c=f=>ar.filter(f).length;
+ let tabs=[['All','All',ar.length],['Applicants','Applicants',c(TABS.Applicants)],['Active','Active Employees',c(TABS.Active)],['Separated','Separated',c(TABS.Separated)]];
+ let picker=`<div class="field" style="max-width:380px;margin-bottom:16px"><label>Agency</label><select id="masterAgencySel" onchange="masterAgency=this.value;masterTab='All';masterQ='';renderF()"><option value="">Select Agency</option>${names.map(n=>`<option value="${esc(n)}" ${n===masterAgency?'selected':''}>${esc(n)} (${cnt(n)})</option>`).join('')}</select></div>`;
+ let tools=masterAgency?`<div class="toolbar">${tabs.map(([k,n,v])=>`<button class="btn small ${masterTab===k?'':'secondary'}" onclick="masterTab='${k}';renderF()">${n} (${v})</button>`).join('')}</div><div class="toolbar"><input id="masterSearch" placeholder="Search name, tracking no., employee no., department..." value="${esc(masterQ)}" oninput="masterQ=this.value;$('masterTable').innerHTML=masterTable()"><button class="btn secondary" onclick="exportMaster()">Export This List</button><button class="btn secondary" onclick="window.print()">Print</button></div>`:'';
+ $('content').innerHTML=`<div class="panel"><h2>Masterlist</h2><p class="sub">Select an agency to see its applicants and employees.</p>${picker}${tools}<div id="masterTable">${masterTable()}</div></div>`;
+}
+function editPersonal(id){currentBId=id;setPage('A')}
+function exportMaster(){
+ if(!masterAgency){alert('Select an agency first.');return}
+ let rows=[['No.','Tracking Number','Employee Number','Surname','First Name','Middle Name','Birthday','Gender','Civil Status','Agency','Department','Position','Team Leader','Application Status','Employment Status','Start Date','Separation Date','Separation Reason'],...masterRows().map((x,i)=>[i+1,x.tracking,x.employeeNumber,x.surname,x.firstName,x.middleName,x.birthday,x.gender,x.civilStatus,x.agency,x.onboardDepartment||x.department,x.onboardPosition||x.position,x.teamLeader,x.applicationStatus,empStatus(x),x.startDate,x.separationDate,x.separationReason])];
+ let csv=rows.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',')).join('\r\n');
+ let a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'}));a.download='Masterlist_'+masterTab+'_'+masterAgency.replace(/\s+/g,'_')+'.csv';a.click();URL.revokeObjectURL(a.href);
+}
+/* TEMP-REMOVE-START: delete this function together with the Clear All Records button before going online */
+function clearAllRecords(){
+ let n=db.employees.length,m=db.items.length;
+ if(!confirm('Delete ALL records?\n\n'+n+' employee record(s) and '+m+' accountable item issuance(s) will be permanently removed. This cannot be undone.'))return;
+ if(!confirm('Final confirmation: clear everything now?'))return;
+ db={employees:[],items:[]};localStorage.removeItem(KEY);
+ editingId=null;currentBId=null;masterTab='All';masterQ='';masterAgency='';
+ render();alert('All records have been cleared.');
+}
+/* TEMP-REMOVE-END */
+// Start directly without login credentials.
+render();
+</script>
 </body>
 </html>
