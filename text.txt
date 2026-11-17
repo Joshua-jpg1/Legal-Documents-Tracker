@@ -78,19 +78,29 @@ input:focus,select:focus,textarea:focus{border-color:#6395ed;box-shadow:0 0 0 3p
 <script>
 const KEY='employeeManagementSystem_v1';
 let db=JSON.parse(localStorage.getItem(KEY)||'{"employees":[],"items":[]}');
-let page='A', editingId=null, currentBId=null;
+let page='A', editingId=null, currentBId=null, selectedItemEmployee='';
+const AGENCIES=['Top Jinzai','Workbridge','Multi Career'];
 const $=id=>document.getElementById(id);
 const save=()=>localStorage.setItem(KEY,JSON.stringify(db));
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const val=id=>$(id)?.value?.trim()||'';
-
 const today=()=>new Date().toISOString().slice(0,10);
-
+const fullName=x=>{if(!x)return'—';let a=[x.firstName,x.middleName].filter(Boolean).join(' ');return (x.surname?x.surname+(a?', ':''):'')+a||x.fullName||'—'};
+const empLabel=x=>x?`${x.tracking} — ${[x.firstName,x.surname].filter(Boolean).join(' ')||x.fullName||'Applicant'}`:'';
 let currentUser=null;
 function visibleEmployees(){return db.employees;}
-
 const idgen=()=> 'EMP-'+new Date().getFullYear()+'-'+Math.random().toString(36).slice(2,7).toUpperCase();
-function setPage(p){page=p;editingId=null;document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===p));render()}
+
+function setPage(p, empId=null){
+  page=p;
+  if(empId!==null){
+    editingId=empId;
+    currentBId=empId;
+  }
+  document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===p));
+  render();
+  window.scrollTo(0,0);
+}
 $('nav').addEventListener('click',e=>{let b=e.target.closest('button[data-page]');if(b)setPage(b.dataset.page)});
 function field(label,id,type='text',opts=null,full=false){let control=opts?`<select id="${id}"><option value="">Select ${label}</option>${opts.map(x=>`<option>${esc(x)}</option>`).join('')}</select>`:`<input id="${id}" type="${type}" ${type==='date'?'':''}>`;return `<div class="field ${full?'full':''}"><label for="${id}">${label}</label>${control}</div>`}
 function area(label,id,full=true){return `<div class="field ${full?'full':''}"><label>${label}</label><textarea id="${id}"></textarea></div>`}
@@ -101,24 +111,96 @@ function render(){
  $('pageTitle').textContent=titles[page];
  ({A:renderB,B:renderA,C:renderC,D:renderD,E:renderE,F:renderF}[page])();
 }
+
+function applicantsQuickList(){
+  let list=visibleEmployees();
+  if(!list.length)return '<div class="empty">No applicants registered yet. Please click <button class="btn small" onclick="setPage(\'A\')">+ New Applicant</button> to register Personal Information.</div>';
+  return `<div style="margin-bottom:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <input id="quickSearchApp" placeholder="Search applicant name or tracking no..." oninput="filterApplicantsList(this.value)" style="max-width:340px">
+    <span class="stamp" style="margin:0">Click on any applicant's name below to load their deployment details</span>
+  </div>
+  <div class="table-wrap" style="max-height:220px;overflow-y:auto;border:1px solid var(--line);border-radius:9px">
+    <table id="quickAppTable">
+      <thead>
+        <tr><th>Tracking No.</th><th>Applicant Name</th><th>Agency</th><th>Application Status</th><th>Employment Status</th><th>Action</th></tr>
+      </thead>
+      <tbody>
+        ${list.map(z=>{
+          let isSelected=z.id===editingId;
+          return `<tr style="${isSelected?'background:#ecfdf5;font-weight:600':''}">
+            <td>${esc(z.tracking)}</td>
+            <td><a href="javascript:void(0)" onclick="selectApplicant('${z.id}')" style="color:var(--navy);text-decoration:underline;font-weight:700;font-size:13px">${esc(fullName(z))}</a></td>
+            <td>${esc(z.agency||'—')}</td>
+            <td><span class="pill">${esc(z.applicationStatus||'For Screening')}</span></td>
+            <td><span class="pill ${z.employmentStatus==='Active'?'green':''}">${esc(z.employmentStatus||'Applicant')}</span></td>
+            <td><button class="btn small ${isSelected?'':'secondary'}" onclick="selectApplicant('${z.id}')">${isSelected?'✓ Selected':'Select &amp; Edit'}</button></td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+  </div>`;
+}
+
+function selectApplicant(id){
+  editingId=id;
+  currentBId=id;
+  renderA();
+  $('deploymentFormPanel')?.scrollIntoView({behavior:'smooth'});
+}
+
+function filterApplicantsList(q){
+  q=q.toLowerCase();
+  let t=$('quickAppTable');
+  if(!t)return;
+  [...t.tBodies[0].rows].forEach(r=>{
+    r.style.display=r.innerText.toLowerCase().includes(q)?'':'none';
+  });
+}
+
 function renderA(){
  let x=employee()||{};
+ let currentName=fullName(x);
  const approvalSteps=[['screening','Initial Screening',['Pending','Passed','Failed']],['interview','Interview Results',['Pending','Passed','Failed']],['medical','Medical Examination',['Pending','Fit to Work','Unfit','Not Applicable']],['hrApproval','HR Approval',['Pending','Approved','Disapproved']],['dhApproval',"Department Head's Approval",['Pending','Approved','Disapproved']]];
  const reqs=['Resume','Valid ID','ID Picture','Health Card','SSS','PAG-IBIG','PhilHealth','PhilHealth YAKAP'];
  const trainings=['Food Safety Orientation','GMP and Personal Hygiene','Occupational Safety','Company Policies','Food Defense','Food Fraud','Food Safety Culture','Animal Health and Welfare','HACCP'];
- $('content').innerHTML=`<div class="notice">Track the applicant from agency deployment through approval, requirements, orientation, onboarding, active employment and separation. Automatic timestamps are recorded when a step is completed or signed.</div>
- <div class="panel"><h2>Deployment & Employment Processing</h2><p class="sub">Create or update an applicant / employee record. Tracking number is generated automatically.</p><div class="grid">
- ${field('Employee Tracking Number','tracking')}${field('Agency Name','agency','text',AGENCIES)}${field("Agency Coordinator's Name",'coordinator')}${field('Deployment Date','deploymentDate','date')}${field('Department / Assigned Area','department')}${field('Position Desired','position')}
- </div>${section('Application & Approval')}<div class="grid">${field('Application Date','applicationDate','date')}${field('Application Status','applicationStatus','text',['For Screening','For Interview','For Medical','For HR Approval','For Department Head Approval','Approved','Disapproved'])}
- ${approvalSteps.map(([id,label,opts])=>`<div class="mini-card"><div class="field"><label>${label}</label><select id="${id}" data-approval-step="${id}"><option value="">Select status</option>${opts.map(o=>`<option>${o}</option>`).join('')}</select><div class="stamp" id="stamp-${id}"></div></div></div>`).join('')}
- ${field('Position Granted / Assigned Position','grantedPosition')}${area('Approval Remarks','approvalRemarks')}</div>
- ${section('Requirements Compliance')}<p class="sub">Tick each requirement when received/verified. The date and time are captured automatically.</p><div class="grid">${reqs.map((n,i)=>`<div class="mini-card"><label class="checkrow"><input type="checkbox" class="req" data-req="${n}" value="${n}"> <b>${n}</b></label><div class="stamp" id="reqstamp-${i}"></div></div>`).join('')}</div>
- <div class="grid" style="margin-top:14px">${field('Verification Status','verification','text',['Pending','Verified','With Pending Requirements'])}${area('Pending Requirements','pendingRequirements')}${field('Requirement Expiration Date (if applicable)','expirationDate','date')}</div>
- ${section('Orientation & Training')}<div class="grid">${field('Attendance','attendance','text',['Pending','Present','Absent'])}${field('Orientation Completion','orientationCompletion','text',['Pending','Completed'])}</div>
- ${trainings.map((n,i)=>`<div class="mini-card"><h4>${n}</h4><label class="checkrow"><input type="checkbox" class="orient" data-training="${n}" value="${n}"> Training Completed</label><div class="grid" style="margin-top:9px"><div class="field"><label>Date</label><input type="date" id="train-date-${i}"></div><div class="field"><label>Time</label><input type="time" id="train-time-${i}"></div><div class="field full"><label>Conducted By</label><input id="train-by-${i}" placeholder="Name of trainer / facilitator"></div></div><div class="stamp" id="train-stamp-${i}"></div></div>`).join('')}
- ${section('Onboarding & Active Employment')}<div class="grid">${field('Department / Section','onboardDepartment')}${field('Position','onboardPosition')}${field('Assigned Team Leader','teamLeader')}${field('Start Date','startDate','date')}${field('Agency Deployment Confirmation','deploymentConfirmation','text',['Pending','Confirmed'])}${field('Employment Status','employmentStatus','text',['Applicant','For Onboarding','Active','Separated'])}</div>
- ${section('Separation')}<div class="grid">${field('Separation Date','separationDate','date')}${field('Reason for Separation','separationReason','text',['Resignation','Termination','End of Contract','AWOL','Transferred to Other Company','Others'])}${field('Clearance Status','clearanceStatus','text',['Not Started','In Progress','Cleared','With Pending Accountability'])}${area('Separation Remarks','separationRemarks')}</div>
- <div class="actions"><button class="btn" onclick="saveA()">Save Employee Record</button><button class="btn secondary" onclick="clearForm()">Clear Form</button></div></div><div class="panel"><h2>Applicant / Employee Records</h2><p class="sub">Select Edit to load a record into the form.</p>${recordsTable()}</div>`;
+ $('content').innerHTML=`<div class="panel">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px">
+    <div>
+      <h2 style="margin:0 0 4px">Registered Applicants for Deployment</h2>
+      <p class="sub" style="margin:0">Click any applicant's name below to load and accomplish their deployment information.</p>
+    </div>
+    <button class="btn small secondary" onclick="setPage('A')">+ Register New Applicant</button>
+  </div>
+  ${applicantsQuickList()}
+ </div>
+
+ <div class="panel" id="deploymentFormPanel">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px">
+    <h2>Deployment &amp; Employment Processing</h2>
+    ${x.id ? `<span class="pill green" style="font-size:12px;padding:6px 12px">Currently Editing: <b>${esc(currentName)}</b></span>` : '<span class="pill amber" style="font-size:12px;padding:6px 12px">No Applicant Selected</span>'}
+  </div>
+  ${x.id ? `
+  <div class="notice" style="background:#ecfdf5;border-color:#86efac;color:#065f46;display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+    <span>Accomplishing deployment for: <b>${esc(currentName)}</b> | Tracking: <b>${esc(x.tracking)}</b></span>
+    <button class="btn small secondary" onclick="clearForm()">Clear Selection</button>
+  </div>` : `
+  <div class="notice" style="margin-bottom:16px">
+    Pumili ng applicant mula sa listahan sa itaas sa pamamagitan ng pag-click sa kanyang pangalan para mai-load ang kanyang deployment form.
+  </div>`}
+
+  <div class="grid">
+  <div class="field full"><label>Applicant Name</label><input value="${esc(currentName)}" readonly style="background:#f8fafc;font-weight:700;color:#1e293b;cursor:not-allowed" placeholder="Select an applicant from list above"></div>
+  ${field('Employee Tracking Number','tracking')}${field('Agency Name','agency','text',AGENCIES)}${field("Agency Coordinator's Name",'coordinator')}${field('Deployment Date','deploymentDate','date')}${field('Department / Assigned Area','department')}${field('Position Desired','position')}
+  </div>${section('Application & Approval')}<div class="grid">${field('Application Date','applicationDate','date')}${field('Application Status','applicationStatus','text',['For Screening','For Interview','For Medical','For HR Approval','For Department Head Approval','Approved','Disapproved'])}
+  ${approvalSteps.map(([id,label,opts])=>`<div class="mini-card"><div class="field"><label>${label}</label><select id="${id}" data-approval-step="${id}"><option value="">Select status</option>${opts.map(o=>`<option>${o}</option>`).join('')}</select><div class="stamp" id="stamp-${id}"></div></div></div>`).join('')}
+  ${field('Position Granted / Assigned Position','grantedPosition')}${area('Approval Remarks','approvalRemarks')}</div>
+  ${section('Requirements Compliance')}<p class="sub">Tick each requirement when received/verified. The date and time are captured automatically.</p><div class="grid">${reqs.map((n,i)=>`<div class="mini-card"><label class="checkrow"><input type="checkbox" class="req" data-req="${n}" value="${n}"> <b>${n}</b></label><div class="stamp" id="reqstamp-${i}"></div></div>`).join('')}</div>
+  <div class="grid" style="margin-top:14px">${field('Verification Status','verification','text',['Pending','Verified','With Pending Requirements'])}${area('Pending Requirements','pendingRequirements')}${field('Requirement Expiration Date (if applicable)','expirationDate','date')}</div>
+  ${section('Orientation & Training')}<div class="grid">${field('Attendance','attendance','text',['Pending','Present','Absent'])}${field('Orientation Completion','orientationCompletion','text',['Pending','Completed'])}</div>
+  ${trainings.map((n,i)=>`<div class="mini-card"><h4>${n}</h4><label class="checkrow"><input type="checkbox" class="orient" data-training="${n}" value="${n}"> Training Completed</label><div class="grid" style="margin-top:9px"><div class="field"><label>Date</label><input type="date" id="train-date-${i}"></div><div class="field"><label>Time</label><input type="time" id="train-time-${i}"></div><div class="field full"><label>Conducted By</label><input id="train-by-${i}" placeholder="Name of trainer / facilitator"></div></div><div class="stamp" id="train-stamp-${i}"></div></div>`).join('')}
+  ${section('Onboarding & Active Employment')}<div class="grid">${field('Department / Section','onboardDepartment')}${field('Position','onboardPosition')}${field('Assigned Team Leader','teamLeader')}${field('Start Date','startDate','date')}${field('Agency Deployment Confirmation','deploymentConfirmation','text',['Pending','Confirmed'])}${field('Employment Status','employmentStatus','text',['Applicant','For Onboarding','Active','Separated'])}</div>
+  ${section('Separation')}<div class="grid">${field('Separation Date','separationDate','date')}${field('Reason for Separation','separationReason','text',['Resignation','Termination','End of Contract','AWOL','Transferred to Other Company','Others'])}${field('Clearance Status','clearanceStatus','text',['Not Started','In Progress','Cleared','With Pending Accountability'])}${area('Separation Remarks','separationRemarks')}</div>
+  <div class="actions"><button class="btn" onclick="saveA(true)">Save &amp; Proceed to Accountable Items &rarr;</button><button class="btn secondary" onclick="saveA(false)">Save Only</button><button class="btn secondary" onclick="clearForm()">Clear Form</button></div></div><div class="panel"><h2>Applicant / Employee Records</h2><p class="sub">Select Edit to load a record into the form.</p>${recordsTable()}</div>`;
  const fields=['tracking','agency','coordinator','deploymentDate','department','position','applicationDate','applicationStatus','screening','interview','medical','hrApproval','dhApproval','grantedPosition','approvalRemarks','verification','pendingRequirements','expirationDate','attendance','orientationCompletion','onboardDepartment','onboardPosition','teamLeader','startDate','deploymentConfirmation','employmentStatus','separationDate','separationReason','clearanceStatus','separationRemarks'];
  fields.forEach(k=>{if($(k))$(k).value=x[k]||''}); if(!x.tracking)$('tracking').value=idgen();
  if(x.agency&&!AGENCIES.includes(x.agency)){let o=document.createElement('option');o.textContent=x.agency;$('agency').appendChild(o);$('agency').value=x.agency}
@@ -126,13 +208,25 @@ function renderA(){
  approvalSteps.forEach(([id])=>{let el=$(id);if(el){el.value=x[id]||'';$('stamp-'+id).textContent=x.approvalTimestamps?.[id]?'Updated: '+new Date(x.approvalTimestamps[id]).toLocaleString():'';el.addEventListener('change',()=>{$('stamp-'+id).textContent='Will record: '+new Date().toLocaleString()})}});
  trainings.forEach((n,i)=>{let t=x.trainingDetails?.[n]||{};let cb=document.querySelector(`.orient[data-training="${n}"]`);cb.checked=!!t.completed||!!x.orientation?.includes(n);$('train-date-'+i).value=t.date||'';$('train-time-'+i).value=t.time||'';$('train-by-'+i).value=t.conductedBy||'';$('train-stamp-'+i).textContent=t.recordedAt?'Recorded: '+new Date(t.recordedAt).toLocaleString():'';cb.addEventListener('change',()=>{$('train-stamp-'+i).textContent=cb.checked?'Will record completion when saved':'Not completed'})});
 }
-function saveA(){
+function saveA(proceedToItems=true){
  let data={};['tracking','agency','coordinator','deploymentDate','department','position','applicationDate','applicationStatus','screening','interview','medical','hrApproval','dhApproval','grantedPosition','approvalRemarks','verification','pendingRequirements','expirationDate','attendance','orientationCompletion','onboardDepartment','onboardPosition','teamLeader','startDate','deploymentConfirmation','employmentStatus','separationDate','separationReason','clearanceStatus','separationRemarks'].forEach(k=>data[k]=val(k));
  let old=employee()||{},now=new Date().toISOString();data.approvalTimestamps={...(old.approvalTimestamps||{})};['screening','interview','medical','hrApproval','dhApproval'].forEach(k=>{if(data[k]&&data[k]!==old[k])data.approvalTimestamps[k]=now});
  data.requirementDates={...(old.requirementDates||{})};data.requirements=[...document.querySelectorAll('.req:checked')].map(e=>e.value);document.querySelectorAll('.req').forEach(e=>{if(e.checked&&!data.requirementDates[e.value])data.requirementDates[e.value]=e.dataset.changedAt||now;if(!e.checked)delete data.requirementDates[e.value]});
  data.trainingDetails={...(old.trainingDetails||{})};data.orientation=[];document.querySelectorAll('.orient').forEach((e,i)=>{let n=e.value;if(e.checked){data.orientation.push(n);data.trainingDetails[n]={completed:true,date:$('train-date-'+i).value,time:$('train-time-'+i).value,conductedBy:val('train-by-'+i),recordedAt:old.trainingDetails?.[n]?.recordedAt||now}}else if(data.trainingDetails[n])data.trainingDetails[n]={...data.trainingDetails[n],completed:false}});
  if(currentUser?.role==='agency')data.agency=currentUser.agency;if(!data.tracking)data.tracking=idgen();
- if(editingId){let i=db.employees.findIndex(x=>x.id===editingId);db.employees[i]={...db.employees[i],...data,updatedAt:now}}else db.employees.push({id:crypto.randomUUID?crypto.randomUUID():String(Date.now()),...data,createdAt:now});save();editingId=null;alert('Employee record saved successfully.');renderA();
+ let targetId=editingId;
+ if(editingId){let i=db.employees.findIndex(x=>x.id===editingId);db.employees[i]={...db.employees[i],...data,updatedAt:now};targetId=db.employees[i].id}else{let newId=crypto.randomUUID?crypto.randomUUID():String(Date.now());db.employees.push({id:newId,...data,createdAt:now});targetId=newId}
+ save();
+ let emp=db.employees.find(x=>x.id===targetId);
+ let name=fullName(emp)!=='—'?fullName(emp):emp.tracking;
+ if(proceedToItems){
+   alert('Deployment information for "' + name + '" saved successfully!\n\nProceeding directly to Accountable Items...');
+   selectedItemEmployee=empLabel(emp);
+   setPage('C', targetId);
+ }else{
+   alert('Deployment record saved successfully.');
+   renderA();
+ }
 }
 function recordsTable(){let employees=visibleEmployees();if(!employees.length)return '<div class="empty">No employee records yet. Create your first record above.</div>';return `<div class="toolbar"><input id="searchA" placeholder="Search name, tracking no., agency..." oninput="filterTable('tableA',this.value)"></div><div class="table-wrap"><table id="tableA"><thead><tr><th>Tracking No.</th><th>Name</th><th>Agency</th><th>Department</th><th>Position</th><th>Status</th><th>Action</th></tr></thead><tbody>${employees.map(x=>`<tr><td>${esc(x.tracking)}</td><td>${esc([x.firstName,x.middleName,x.surname].filter(Boolean).join(' ')||x.fullName||'—')}</td><td>${esc(x.agency)}</td><td>${esc(x.department||x.onboardDepartment)}</td><td>${esc(x.position||x.onboardPosition)}</td><td><span class="pill">${esc(x.employmentStatus||x.applicationStatus||'Applicant')}</span></td><td><button class="btn small secondary" onclick="editRecord('${x.id}')">Edit</button> <button class="btn small danger" onclick="deleteRecord('${x.id}')">Delete</button></td></tr>`).join('')}</tbody></table></div>`}
 const PH_PROVINCES=['Abra','Agusan del Norte','Agusan del Sur','Aklan','Albay','Antique','Apayao','Aurora','Basilan','Bataan','Batanes','Batangas','Benguet','Biliran','Bohol','Bukidnon','Bulacan','Cagayan','Camarines Norte','Camarines Sur','Camiguin','Capiz','Catanduanes','Cavite','Cebu','Cotabato','Davao de Oro','Davao del Norte','Davao del Sur','Davao Occidental','Davao Oriental','Dinagat Islands','Eastern Samar','Guimaras','Ifugao','Ilocos Norte','Ilocos Sur','Iloilo','Isabela','Kalinga','La Union','Laguna','Lanao del Norte','Lanao del Sur','Leyte','Maguindanao del Norte','Maguindanao del Sur','Marinduque','Masbate','Misamis Occidental','Misamis Oriental','Mountain Province','Negros Occidental','Negros Oriental','Northern Samar','Nueva Ecija','Nueva Vizcaya','Occidental Mindoro','Oriental Mindoro','Palawan','Pampanga','Pangasinan','Quezon','Quirino','Rizal','Romblon','Samar','Sarangani','Siquijor','Sorsogon','South Cotabato','Southern Leyte','Sultan Kudarat','Sulu','Surigao del Norte','Surigao del Sur','Tarlac','Tawi-Tawi','Zambales','Zamboanga del Norte','Zamboanga del Sur','Zamboanga Sibugay','Metro Manila'];
@@ -144,16 +238,45 @@ function renderB(){let x=db.employees.find(z=>z.id===currentBId)||{};$('content'
  ${section('Family Information')}<div class="grid">${field("Mother's Name",'motherName')}${field("Mother's Age",'motherAge','number')}${field("Father's Name",'fatherName')}${field("Father's Age",'fatherAge','number')}${field('Spouse Name','spouseName')}${field('Spouse Age','spouseAge','number')}</div><div class="section-title">Children (Maximum 8)</div>${Array.from({length:8},(_,i)=>`<div class="child-grid"><div class="field"><label>Child ${i+1} Name</label><input id="childName${i+1}"></div><div class="field"><label>Age</label><input id="childAge${i+1}" type="number" min="0"></div></div>`).join('')}
  ${section('Educational Attainment')}<div class="checklist">${['College Graduate','College Level','High School Graduate','Others'].map(n=>`<label class="checkrow"><input type="checkbox" class="educationCheck" value="${n}"> ${n}</label>`).join('')}</div><div class="grid" style="margin-top:12px">${field('Degree Program','degreeProgram')}${field('Year Graduated','yearGraduated')}</div>
  ${section('Previous Employment')}<div class="grid">${field('Company Name','previousCompany')}${field('Employment Period','employmentPeriod')}</div>
- <div class="actions"><button class="btn" onclick="saveB()">Save Personal Information</button><button class="btn secondary" onclick="setPage('A')">Next: Deployment Information</button></div></div>`;
+ <div class="actions"><button class="btn" onclick="saveB()">Save &amp; Proceed to Deployment &rarr;</button><button class="btn secondary" onclick="setPage('B', currentBId)">Next: Deployment Information &rarr;</button></div></div>`;
  const fields=['personType','applicationType','referralName','bTracking','surname','firstName','middleName','birthday','gender','civilStatus','curProvince','curCity','curBarangay','curStreet','perProvince','perCity','perBarangay','perStreet','motherName','motherAge','fatherName','fatherAge','spouseName','spouseAge','degreeProgram','yearGraduated','previousCompany','employmentPeriod'];fields.forEach(k=>{if($(k))$(k).value=x[k]||''});$('bTracking').value=x.tracking||x.bTracking||idgen();
  ['cur','per'].forEach(async prefix=>{let prov=x[prefix+'Province']||'';if(prov){$(prefix+'Province').value=prov;await loadCities(prov,prefix+'City');$(prefix+'City').value=x[prefix+'City']||''}});
  (x.childrenList||[]).forEach((c,i)=>{if(i<8){$('childName'+(i+1)).value=c.name||'';$('childAge'+(i+1)).value=c.age||''}});document.querySelectorAll('.educationCheck').forEach(e=>e.checked=(x.educationTypes||[]).includes(e.value));
 }
 function copyCurrentAddress(){['Province','City','Barangay','Street'].forEach(k=>{let a=$('cur'+k),b=$('per'+k);if(a&&b){b.value=a.value;if(k==='Province')loadCities(a.value,'perCity').then(()=>{$('perCity').value=$('curCity').value})}})}
 function loadB(id){currentBId=id||null;renderB()}
-function saveB(){let x=db.employees.find(z=>z.id===currentBId);if(!x){x={id:crypto.randomUUID?crypto.randomUUID():String(Date.now()),tracking:val('bTracking')||idgen(),createdAt:new Date().toISOString()};db.employees.push(x);currentBId=x.id}['personType','applicationType','referralName','bTracking','surname','firstName','middleName','birthday','gender','civilStatus','curProvince','curCity','curBarangay','curStreet','perProvince','perCity','perBarangay','perStreet','motherName','motherAge','fatherName','fatherAge','spouseName','spouseAge','degreeProgram','yearGraduated','previousCompany','employmentPeriod'].forEach(k=>x[k]=val(k));x.childrenList=Array.from({length:8},(_,i)=>({name:val('childName'+(i+1)),age:val('childAge'+(i+1))})).filter(c=>c.name||c.age);x.educationTypes=[...document.querySelectorAll('.educationCheck:checked')].map(e=>e.value);x.tracking=x.tracking||x.bTracking;save();alert('Personal information saved.');renderB()}
+function saveB(){
+ let x=db.employees.find(z=>z.id===currentBId);
+ if(!x){
+   x={id:crypto.randomUUID?crypto.randomUUID():String(Date.now()),tracking:val('bTracking')||idgen(),createdAt:new Date().toISOString()};
+   db.employees.push(x);
+   currentBId=x.id;
+ }
+ ['personType','applicationType','referralName','bTracking','surname','firstName','middleName','birthday','gender','civilStatus','curProvince','curCity','curBarangay','curStreet','perProvince','perCity','perBarangay','perStreet','motherName','motherAge','fatherName','fatherAge','spouseName','spouseAge','degreeProgram','yearGraduated','previousCompany','employmentPeriod'].forEach(k=>x[k]=val(k));
+ x.childrenList=Array.from({length:8},(_,i)=>({name:val('childName'+(i+1)),age:val('childAge'+(i+1))})).filter(c=>c.name||c.age);
+ x.educationTypes=[...document.querySelectorAll('.educationCheck:checked')].map(e=>e.value);
+ x.tracking=x.tracking||x.bTracking;
+ if(!x.applicationStatus)x.applicationStatus='For Screening';
+ if(!x.employmentStatus)x.employmentStatus='Applicant';
+ save();
+ let name=fullName(x)!=='—'?fullName(x):x.tracking;
+ alert('Personal information for "' + name + '" saved successfully!\n\nProceeding directly to Deployment Information...');
+ editingId=x.id;
+ setPage('B', x.id);
+}
 
-function renderC(){let x=employee()||{};$('content').innerHTML=`<div class="panel"><h2>Issuance of Accountable Items</h2><p class="sub">Record issued property, quantity and condition. Link each issuance to an employee tracking number.</p><div class="grid">${field('Employee','itemEmployee','text',db.employees.map(x=>`${x.tracking} — ${x.firstName||''} ${x.surname||''}`))}${field('Issuance Date','issueDate','date')}${field('Item','itemName','text',['Tablet (Gadget)','Stopwatch','Company ID','Cellphone','Vehicle Pass/Sticker','Freezer Jacket','Freezer Pants','Thermometer','Others'])}${field('Other Item (if applicable)','otherItem')}${field('Quantity','itemQty','number')}${field('Condition','itemCondition','text',['New','Good','Fair','Damaged'])}${area('Remarks','itemRemarks')}</div><div class="actions"><button class="btn" onclick="saveItem()">Save Issuance</button></div></div><div class="panel"><h2>Issuance Records</h2>${itemsTable()}</div>`;$('issueDate').value=today()}
+function renderC(){
+ let x=employee()||{};
+ let empList=db.employees.map(empLabel);
+ $('content').innerHTML=`<div class="panel"><h2>Issuance of Accountable Items</h2><p class="sub">Record issued property, quantity and condition. Link each issuance to an employee tracking number.</p><div class="grid">${field('Employee','itemEmployee','text',empList)}${field('Issuance Date','issueDate','date')}${field('Item','itemName','text',['Tablet (Gadget)','Stopwatch','Company ID','Cellphone','Vehicle Pass/Sticker','Freezer Jacket','Freezer Pants','Thermometer','Others'])}${field('Other Item (if applicable)','otherItem')}${field('Quantity','itemQty','number')}${field('Condition','itemCondition','text',['New','Good','Fair','Damaged'])}${area('Remarks','itemRemarks')}</div><div class="actions"><button class="btn" onclick="saveItem()">Save Issuance</button></div></div><div class="panel"><h2>Issuance Records</h2>${itemsTable()}</div>`;
+ $('issueDate').value=today();
+ if(selectedItemEmployee&&$('itemEmployee')){
+   $('itemEmployee').value=selectedItemEmployee;
+ }else if(x&&x.tracking&&$('itemEmployee')){
+   let match=empList.find(o=>o.startsWith(x.tracking));
+   if(match)$('itemEmployee').value=match;
+ }
+}
 function saveItem(){if(!val('itemEmployee')){alert('Select an employee.');return}db.items.push({id:String(Date.now()),employee:val('itemEmployee'),date:val('issueDate'),item:val('itemName')==='Others'?val('otherItem'):val('itemName'),qty:val('itemQty'),condition:val('itemCondition'),remarks:val('itemRemarks'),returned:false});save();alert('Accountable item issuance saved.');renderC()}
 function itemsTable(){if(!db.items.length)return '<div class="empty">No accountable items issued yet.</div>';return `<div class="table-wrap"><table><thead><tr><th>Employee</th><th>Date</th><th>Item</th><th>Qty</th><th>Condition</th><th>Return Status</th><th>Action</th></tr></thead><tbody>${db.items.map(x=>`<tr><td>${esc(x.employee)}</td><td>${esc(x.date)}</td><td>${esc(x.item)}</td><td>${esc(x.qty)}</td><td>${esc(x.condition)}</td><td><span class="pill ${x.returned?'green':'amber'}">${x.returned?'Returned':'Not yet returned'}</span></td><td><button class="btn small secondary" onclick="toggleReturn('${x.id}')">${x.returned?'Undo':'Mark Returned'}</button></td></tr>`).join('')}</tbody></table></div>`}
 function toggleReturn(id){let x=db.items.find(x=>x.id===id);x.returned=!x.returned;save();renderC()}
@@ -173,10 +296,8 @@ function newRecord(){editingId=null;currentBId=null;setPage('A')}
 function filterTable(id,q){let t=$(id);if(!t)return;[...t.tBodies[0].rows].forEach(r=>r.style.display=r.innerText.toLowerCase().includes(q.toLowerCase())?'':'none')}
 function exportCSV(){let rows=[['Tracking Number','Surname','First Name','Middle Name','Agency','Coordinator','Deployment Date','Department','Position','Application Status','Requirements Status','Orientation','Employee Number','Start Date','Employment Status','Separation Date','Separation Reason'],...db.employees.map(x=>[x.tracking,x.surname,x.firstName,x.middleName,x.agency,x.coordinator,x.deploymentDate,x.department,x.position,x.applicationStatus,(x.requirements||[]).join('; '),x.orientationCompletion,x.employeeNumber,x.startDate,x.employmentStatus,x.separationDate,x.separationReason])];let csv=rows.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',')).join('\r\n');let blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});let a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='Employee_Management_Records.csv';a.click();URL.revokeObjectURL(a.href)}
 
-const AGENCIES=['Top Jinzai','Workbridge','Multi Career'];
 let masterTab='All', masterQ='', masterAgency='';
 const empStatus=x=>x.employmentStatus||'Applicant';
-const fullName=x=>{let a=[x.firstName,x.middleName].filter(Boolean).join(' ');return (x.surname?x.surname+(a?', ':''):'')+a||x.fullName||'—'};
 const agencyOf=x=>x.agency||'No Agency';
 const agencyRank=n=>{let i=AGENCIES.indexOf(n);return i>=0?i:n==='No Agency'?999:100};
 const TABS={All:()=>true,Applicants:x=>['Applicant','For Onboarding'].includes(empStatus(x)),Active:x=>empStatus(x)==='Active',Separated:x=>empStatus(x)==='Separated'};
