@@ -46,9 +46,69 @@ input:focus,select:focus,textarea:focus{border-color:#6395ed;box-shadow:0 0 0 3p
 
 .address-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.mini-card{border:1px solid var(--line);border-radius:10px;padding:12px;margin:8px 0}.mini-card h4{margin:0 0 9px;font-size:13px;color:#1e3a5f}.stamp{font-size:11px;color:#64748b;margin-top:4px}.signature-box{border:1px dashed #94a3b8;border-radius:8px;padding:10px;background:#f8fafc}.signature-pad{display:block;width:100%;height:135px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;touch-action:none;cursor:crosshair}.signature-tools{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:7px}.signature-hint{font-size:11px;color:#64748b}.child-grid{display:grid;grid-template-columns:2fr 1fr;gap:10px;margin:8px 0}
 @media(max-width:650px){.address-grid{grid-template-columns:1fr}}
+
+.login-overlay{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#143d2b 0%,#1e563d 50%,#2d6a4f 100%);padding:20px}
+.login-box{width:min(100%,480px);background:#fff;border-radius:18px;padding:34px 28px;box-shadow:0 20px 45px rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.25);text-align:center}
+.login-logo{width:68px;height:68px;object-fit:contain;background:#fff;border-radius:50%;padding:4px;box-shadow:0 4px 12px rgba(0,0,0,0.15);margin:0 auto 12px;display:block;border:2px solid #86efac}
+.quick-login-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.quick-login-btn{background:#f8fafc;border:1px solid #cbd5e1;padding:8px 10px;border-radius:8px;font-size:11px;cursor:pointer;text-align:left;transition:all 0.15s ease}
+.quick-login-btn:hover{background:#e2e8f0;border-color:#94a3b8}
+.user-card-sidebar{background:rgba(255,255,255,0.08);border-radius:9px;padding:10px 12px;margin:0 0 16px;border:1px solid rgba(255,255,255,0.14);font-size:12px;text-align:left}
+@media(max-width:500px){.quick-login-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
+
+<div id="loginView" class="login-overlay" style="display:none">
+  <div class="login-box">
+    <img src="logo.png" alt="May Harvest Corporation" class="login-logo">
+    <div style="font-size:12px;font-weight:800;letter-spacing:1px;color:#143d2b;text-transform:uppercase;margin-bottom:3px">MAY HARVEST CORPORATION</div>
+    <h2 style="font-size:19px;color:#1e293b;margin:0 0 4px">EMPLOYEE MANAGEMENT SYSTEM</h2>
+    <p style="color:#64748b;font-size:12px;margin:0 0 18px">HR &amp; Agency Manpower System • Secure Portal</p>
+    <div id="loginError" style="display:none;background:#fee2e2;border:1px solid #fca5a5;color:#991b1b;padding:9px;border-radius:8px;font-size:12px;margin-bottom:14px;text-align:left"></div>
+    <form onsubmit="handleLoginSubmit(event)" style="text-align:left">
+      <div class="field" style="margin-bottom:12px">
+        <label for="loginUser">Username</label>
+        <input id="loginUser" required placeholder="Enter username" autocomplete="username">
+      </div>
+      <div class="field" style="margin-bottom:16px">
+        <label for="loginPass">Password</label>
+        <input id="loginPass" type="password" required placeholder="Enter password" autocomplete="current-password">
+      </div>
+      <button type="submit" class="btn" style="width:100%;padding:11px;font-size:14px;background:#143d2b;color:white;cursor:pointer">Sign In &rarr;</button>
+    </form>
+    <div style="margin-top:22px;border-top:1px solid #e2e8f0;padding-top:16px;text-align:left">
+      <div style="font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">⚡ Quick Login (Role Access Testing):</div>
+      <div class="quick-login-grid">
+        <button type="button" class="quick-login-btn" onclick="quickLogin('admin','admin123')">
+          <div style="font-weight:700;color:#143d2b">👑 System Admin</div>
+          <div style="color:#64748b;font-size:10px">All modules &amp; settings</div>
+        </button>
+        <button type="button" class="quick-login-btn" onclick="quickLogin('mhc_hr','hr123')">
+          <div style="font-weight:700;color:#143d2b">🏢 MHC HR</div>
+          <div style="color:#64748b;font-size:10px">All agencies &amp; employees</div>
+        </button>
+        <button type="button" class="quick-login-btn" onclick="quickLogin('agency_top','agency123')">
+          <div style="font-weight:700;color:#143d2b">📋 Top Jinzai</div>
+          <div style="color:#64748b;font-size:10px">Own agency scope</div>
+        </button>
+        <button type="button" class="quick-login-btn" onclick="quickLogin('agency_work','agency123')">
+          <div style="font-weight:700;color:#143d2b">📋 Workbridge</div>
+          <div style="color:#64748b;font-size:10px">Own agency scope</div>
+        </button>
+        <button type="button" class="quick-login-btn" onclick="quickLogin('agency_multi','agency123')">
+          <div style="font-weight:700;color:#143d2b">📋 Multi Career</div>
+          <div style="color:#64748b;font-size:10px">Own agency scope</div>
+        </button>
+        <button type="button" class="quick-login-btn" onclick="quickLogin('dept_head','dept123')">
+          <div style="font-weight:700;color:#143d2b">👔 Department Head</div>
+          <div style="color:#64748b;font-size:10px">Assigned employees &amp; status</div>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="app" id="mainApp">
 <aside class="sidebar">
  <div class="brand">
@@ -58,6 +118,14 @@ input:focus,select:focus,textarea:focus{border-color:#6395ed;box-shadow:0 0 0 3p
   <div class="company-name">MAY HARVEST CORPORATION</div>
   <h2>EMPLOYEE MANAGEMENT</h2>
   <small>HR &amp; Agency Manpower System</small>
+ </div>
+ <div class="user-card-sidebar" id="sideUserBox">
+  <div style="font-weight:700;color:#ffffff;display:flex;align-items:center;gap:6px" id="sideUserName">
+   <span>👤 User</span>
+  </div>
+  <div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap" id="sideUserRole">
+   <span class="pill green" style="font-size:10px;padding:2px 7px">Access</span>
+  </div>
  </div>
  <div class="nav-label">MAIN MODULES</div>
  <nav class="nav" id="nav">
@@ -71,15 +139,103 @@ input:focus,select:focus,textarea:focus{border-color:#6395ed;box-shadow:0 0 0 3p
  <div class="side-foot">Standalone local version<br>Records are saved in this browser.</div>
 </aside>
 <main class="main">
- <header class="topbar"><div><div class="eyebrow">Human Resources / Agency Coordination</div><h1 id="pageTitle">Personal Information</h1></div><div class="top-actions"><button class="btn secondary" onclick="exportCSV()">Export Records</button><button class="btn" onclick="newRecord()">+ New Record</button><!-- TEMP-REMOVE-START --><button class="btn danger" onclick="clearAllRecords()">Clear All Records</button><!-- TEMP-REMOVE-END --></div></header>
+ <header class="topbar">
+  <div>
+   <div class="eyebrow" id="userRoleEyebrow">Human Resources / Agency Coordination</div>
+   <h1 id="pageTitle">Personal Information</h1>
+  </div>
+  <div class="top-actions">
+   <div id="userProfileTag" style="display:flex;align-items:center;gap:6px"></div>
+   <button class="btn secondary" id="exportBtn" onclick="exportCSV()">Export Records</button>
+   <button class="btn" id="newRecordBtn" onclick="newRecord()">+ New Record</button>
+   <!-- TEMP-REMOVE-START --><button class="btn danger" id="clearAllBtn" onclick="clearAllRecords()" style="display:none">Clear All Records</button><!-- TEMP-REMOVE-END -->
+   <button class="btn secondary" onclick="logout()" style="padding:8px 12px;font-size:12px;border:1px solid #cbd5e1">Logout</button>
+  </div>
+ </header>
  <div id="content"></div>
 </main>
 </div>
 <script>
 const KEY='employeeManagementSystem_v1';
+const KEY_USERS='employeeManagementSystem_users_v1';
 let db=JSON.parse(localStorage.getItem(KEY)||'{"employees":[],"items":[]}');
 let page='A', editingId=null, currentBId=null, selectedItemEmployee='';
 const AGENCIES=['Top Jinzai','Workbridge','Multi Career'];
+
+const ROLES={
+  admin:{
+    title:'System Administrator',
+    badge:'All Modules & Settings',
+    pages:['A','B','C','D','E','F'],
+    canClearAll:true,
+    canExport:true,
+    canDelete:true,
+    description:'Full unrestricted access to all modules and system settings'
+  },
+  hr:{
+    title:'MHC HR',
+    badge:'All Agencies & Employees',
+    pages:['A','B','C','D','E','F'],
+    canClearAll:false,
+    canExport:true,
+    canDelete:true,
+    description:'Full access to all agencies, applicants, and employee records'
+  },
+  agency:{
+    title:'Agency Coordinator',
+    badge:'Own Agency Only',
+    pages:['A','B','C','E','F'],
+    canClearAll:false,
+    canExport:true,
+    canDelete:false,
+    description:'Scoped access to own agency applicants and employees only'
+  },
+  dept_head:{
+    title:'Department Head',
+    badge:'Assigned Staff & Status',
+    pages:['B','D','E','F'],
+    canClearAll:false,
+    canExport:false,
+    canDelete:false,
+    description:'Access to assigned employees, approvals, and status tracking'
+  }
+};
+
+const DEFAULT_USERS=[
+  {username:'admin',password:'admin123',name:'System Administrator',role:'admin'},
+  {username:'mhc_hr',password:'hr123',name:'MHC HR Officer',role:'hr'},
+  {username:'agency_top',password:'agency123',name:'Top Jinzai Coordinator',role:'agency',agency:'Top Jinzai'},
+  {username:'agency_work',password:'agency123',name:'Workbridge Coordinator',role:'agency',agency:'Workbridge'},
+  {username:'agency_multi',password:'agency123',name:'Multi Career Coordinator',role:'agency',agency:'Multi Career'},
+  {username:'dept_head',password:'dept123',name:'Department Head',role:'dept_head',department:''}
+];
+
+function getUsers(){
+  let s=localStorage.getItem(KEY_USERS);
+  if(!s){localStorage.setItem(KEY_USERS,JSON.stringify(DEFAULT_USERS));return DEFAULT_USERS;}
+  try{return JSON.parse(s);}catch(e){return DEFAULT_USERS;}
+}
+
+let currentUser=null;
+function visibleEmployees(){
+  if(!currentUser) return [];
+  if(currentUser.role==='admin' || currentUser.role==='hr') {
+    return db.employees;
+  }
+  if(currentUser.role==='agency') {
+    let agencyName=(currentUser.agency||'').toLowerCase();
+    return db.employees.filter(x=>(x.agency||'').toLowerCase()===agencyName);
+  }
+  if(currentUser.role==='dept_head') {
+    if(currentUser.department) {
+      let deptName=currentUser.department.toLowerCase();
+      return db.employees.filter(x=>(x.department||x.onboardDepartment||'').toLowerCase()===deptName);
+    }
+    return db.employees;
+  }
+  return db.employees;
+}
+
 const $=id=>document.getElementById(id);
 const save=()=>localStorage.setItem(KEY,JSON.stringify(db));
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -87,9 +243,86 @@ const val=id=>$(id)?.value?.trim()||'';
 const today=()=>new Date().toISOString().slice(0,10);
 const fullName=x=>{if(!x)return'—';let a=[x.firstName,x.middleName].filter(Boolean).join(' ');return (x.surname?x.surname+(a?', ':''):'')+a||x.fullName||'—'};
 const empLabel=x=>x?`${x.tracking} — ${[x.firstName,x.surname].filter(Boolean).join(' ')||x.fullName||'Applicant'}`:'';
-let currentUser=null;
-function visibleEmployees(){return db.employees;}
 const idgen=()=> 'EMP-'+new Date().getFullYear()+'-'+Math.random().toString(36).slice(2,7).toUpperCase();
+
+function checkAuth(){
+  let stored=localStorage.getItem('ems_current_user');
+  if(stored){
+    try{ currentUser=JSON.parse(stored); }catch(e){ currentUser=null; }
+  }
+  if(!currentUser){
+    $('loginView').style.display='flex';
+    $('mainApp').style.display='none';
+  }else{
+    $('loginView').style.display='none';
+    $('mainApp').style.display='flex';
+    updateNavForRole();
+    render();
+  }
+}
+
+function handleLoginSubmit(e){
+  e.preventDefault();
+  let u=val('loginUser'), p=val('loginPass');
+  loginUser(u, p);
+}
+
+function quickLogin(username, password){
+  if($('loginUser')) $('loginUser').value=username;
+  if($('loginPass')) $('loginPass').value=password;
+  loginUser(username, password);
+}
+
+function loginUser(username, password){
+  let users=getUsers();
+  let found=users.find(x=>x.username.toLowerCase()===username.trim().toLowerCase() && x.password===password);
+  if(!found){
+    let err=$('loginError');
+    if(err){ err.textContent='Invalid username or password. Please try again.'; err.style.display='block'; }
+    return;
+  }
+  if($('loginError')) $('loginError').style.display='none';
+  currentUser=found;
+  localStorage.setItem('ems_current_user', JSON.stringify(currentUser));
+  editingId=null;
+  currentBId=null;
+  const cfg=ROLES[currentUser.role]||ROLES.admin;
+  page=cfg.pages[0];
+  checkAuth();
+}
+
+function logout(){
+  if(confirm('Are you sure you want to log out?')){
+    localStorage.removeItem('ems_current_user');
+    currentUser=null;
+    editingId=null;
+    currentBId=null;
+    checkAuth();
+  }
+}
+
+function updateNavForRole(){
+  if(!currentUser) return;
+  const cfg=ROLES[currentUser.role]||ROLES.admin;
+  const allowed=cfg.pages||['A','B','C','D','E','F'];
+  document.querySelectorAll('#nav button[data-page]').forEach(b=>{
+    let p=b.dataset.page;
+    b.style.display=allowed.includes(p)?'flex':'none';
+  });
+  if(!allowed.includes(page)){
+    page=allowed[0];
+  }
+  document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('active',b.dataset.page===page));
+  
+  if($('sideUserName')) $('sideUserName').innerHTML=`<span>👤 ${esc(currentUser.name)}</span>`;
+  if($('sideUserRole')) $('sideUserRole').innerHTML=`<span class="pill green" style="font-size:10px;padding:2px 7px">${esc(cfg.title)}</span>${currentUser.agency?`<span class="pill amber" style="font-size:10px;padding:2px 7px">${esc(currentUser.agency)}</span>`:''}`;
+  if($('userRoleEyebrow')) $('userRoleEyebrow').textContent=`${cfg.title} • ${cfg.badge}`;
+  if($('userProfileTag')) $('userProfileTag').innerHTML=`<span class="pill green" style="font-size:11px"><b>${esc(currentUser.name)}</b> (${esc(cfg.title)})</span>${currentUser.agency?`<span class="pill amber" style="font-size:11px">${esc(currentUser.agency)}</span>`:''}`;
+  
+  if($('clearAllBtn')) $('clearAllBtn').style.display=cfg.canClearAll?'inline-block':'none';
+  if($('exportBtn')) $('exportBtn').style.display=cfg.canExport?'inline-block':'none';
+  if($('newRecordBtn')) $('newRecordBtn').style.display=allowed.includes('A')?'inline-block':'none';
+}
 
 function setPage(p, empId=null){
   page=p;
@@ -107,8 +340,10 @@ function area(label,id,full=true){return `<div class="field ${full?'full':''}"><
 function section(t){return `<div class="section-title">${t}</div>`}
 function employee(){return db.employees.find(x=>x.id===editingId)}
 function render(){
+ if(!currentUser){ checkAuth(); return; }
+ updateNavForRole();
  const titles={A:'Personal Information',B:'Deployment Information',C:'Accountable Items',D:'Clearance Process',E:'Dashboard',F:'Masterlist'};
- $('pageTitle').textContent=titles[page];
+ $('pageTitle').textContent=titles[page]||'Employee Management';
  ({A:renderB,B:renderA,C:renderC,D:renderD,E:renderE,F:renderF}[page])();
 }
 
@@ -204,6 +439,10 @@ function renderA(){
  const fields=['tracking','agency','coordinator','deploymentDate','department','position','applicationDate','applicationStatus','screening','interview','medical','hrApproval','dhApproval','grantedPosition','approvalRemarks','verification','pendingRequirements','expirationDate','attendance','orientationCompletion','onboardDepartment','onboardPosition','teamLeader','startDate','deploymentConfirmation','employmentStatus','separationDate','separationReason','clearanceStatus','separationRemarks'];
  fields.forEach(k=>{if($(k))$(k).value=x[k]||''}); if(!x.tracking)$('tracking').value=idgen();
  if(x.agency&&!AGENCIES.includes(x.agency)){let o=document.createElement('option');o.textContent=x.agency;$('agency').appendChild(o);$('agency').value=x.agency}
+ if(currentUser?.role==='agency'&&$('agency')){
+   $('agency').value=currentUser.agency;
+   $('agency').disabled=true;
+ }
  document.querySelectorAll('.req').forEach((el,i)=>{el.checked=!!x.requirementDates?.[el.value]||!!x.requirements?.includes(el.value);$('reqstamp-'+i).textContent=x.requirementDates?.[el.value]?'Recorded: '+x.requirementDates[el.value]:'';el.addEventListener('change',()=>{if(el.checked){el.dataset.changedAt=new Date().toISOString();$('reqstamp-'+i).textContent='Will record: '+new Date().toLocaleString()}else $('reqstamp-'+i).textContent='Not checked'})});
  approvalSteps.forEach(([id])=>{let el=$(id);if(el){el.value=x[id]||'';$('stamp-'+id).textContent=x.approvalTimestamps?.[id]?'Updated: '+new Date(x.approvalTimestamps[id]).toLocaleString():'';el.addEventListener('change',()=>{$('stamp-'+id).textContent='Will record: '+new Date().toLocaleString()})}});
  trainings.forEach((n,i)=>{let t=x.trainingDetails?.[n]||{};let cb=document.querySelector(`.orient[data-training="${n}"]`);cb.checked=!!t.completed||!!x.orientation?.includes(n);$('train-date-'+i).value=t.date||'';$('train-time-'+i).value=t.time||'';$('train-by-'+i).value=t.conductedBy||'';$('train-stamp-'+i).textContent=t.recordedAt?'Recorded: '+new Date(t.recordedAt).toLocaleString():'';cb.addEventListener('change',()=>{$('train-stamp-'+i).textContent=cb.checked?'Will record completion when saved':'Not completed'})});
@@ -258,6 +497,7 @@ function saveB(){
  x.tracking=x.tracking||x.bTracking;
  if(!x.applicationStatus)x.applicationStatus='For Screening';
  if(!x.employmentStatus)x.employmentStatus='Applicant';
+ if(currentUser?.role==='agency')x.agency=currentUser.agency;
  save();
  let name=fullName(x)!=='—'?fullName(x):x.tracking;
  alert('Personal information for "' + name + '" saved successfully!\n\nProceeding directly to Deployment Information...');
@@ -290,7 +530,14 @@ function saveClearance(){let chosen=val('clearEmployee');let emp=db.employees.fi
 function renderE(){let all=visibleEmployees(), count=s=>all.filter(x=>(x.employmentStatus||'Applicant')===s).length;let apps=all.length, approvals=all.filter(x=>x.applicationStatus==='Approved').length, req=all.filter(x=>x.verification==='Verified').length, orient=all.filter(x=>x.orientationCompletion==='Completed').length, active=count('Active'), separated=count('Separated');$('content').innerHTML=`<div class="cards">${[['Total Applicants',apps],['Approved',approvals],['Requirements Verified',req],['Orientation Completed',orient],['For Onboarding',count('For Onboarding')],['Active Employees',active],['Separated',separated],['Accountable Items',db.items.length]].map(([n,v])=>`<div class="stat"><small>${n}</small><strong>${v}</strong></div>`).join('')}</div><div class="panel"><h2>Employee Application Status</h2><p class="sub">Overview of records by current employment status.</p>${dashboardTable()}</div><div class="panel"><h2>Monitoring Overview</h2><div class="grid three">${[['Application Monitoring',all.filter(x=>x.applicationDate).length],['Approval Monitoring',all.filter(x=>x.applicationStatus).length],['Requirements Monitoring',all.filter(x=>x.verification).length],['Orientation Monitoring',all.filter(x=>x.orientationDate).length],['Onboarding Monitoring',all.filter(x=>x.startDate).length],['Active Monitoring',active],['Separated Monitoring',separated]].map(([n,v])=>`<div class="stat"><small>${n}</small><strong>${v}</strong></div>`).join('')}</div></div>`}
 function dashboardTable(){let employees=visibleEmployees();if(!employees.length)return '<div class="empty">No records to monitor.</div>';return `<div class="table-wrap"><table><thead><tr><th>Tracking No.</th><th>Employee</th><th>Agency</th><th>Department</th><th>Application</th><th>Requirements</th><th>Employment</th></tr></thead><tbody>${employees.map(x=>`<tr><td>${esc(x.tracking)}</td><td>${esc([x.firstName,x.middleName,x.surname].filter(Boolean).join(' ')||'—')}</td><td>${esc(x.agency)}</td><td>${esc(x.department||x.onboardDepartment)}</td><td>${esc(x.applicationStatus||'Pending')}</td><td>${esc(x.verification||'Pending')}</td><td>${esc(x.employmentStatus||'Applicant')}</td></tr>`).join('')}</tbody></table></div>`}
 function editRecord(id){page='B';document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.page==='B'));editingId=id;render();window.scrollTo(0,0)}
-function deleteRecord(id){if(confirm('Delete this employee record? This cannot be undone.')){db.employees=db.employees.filter(x=>x.id!==id);save();renderA()}}
+function deleteRecord(id){
+ const cfg=ROLES[currentUser?.role]||ROLES.admin;
+ if(!cfg.canDelete){
+   alert('Access restricted: Only System Administrator and MHC HR can delete employee records.');
+   return;
+ }
+ if(confirm('Delete this employee record? This cannot be undone.')){db.employees=db.employees.filter(x=>x.id!==id);save();renderA()}
+}
 function clearForm(){editingId=null;renderA()}
 function newRecord(){editingId=null;currentBId=null;setPage('A')}
 function filterTable(id,q){let t=$(id);if(!t)return;[...t.tBodies[0].rows].forEach(r=>r.style.display=r.innerText.toLowerCase().includes(q.toLowerCase())?'':'none')}
@@ -314,10 +561,16 @@ function masterTable(){
 }
 function renderF(){
  let names=[...AGENCIES,...new Set(db.employees.map(agencyOf).filter(n=>!AGENCIES.includes(n)))];
+ if(currentUser?.role==='agency'){
+   names=[currentUser.agency];
+   masterAgency=currentUser.agency;
+ }
  let cnt=n=>db.employees.filter(x=>agencyOf(x)===n).length;
  let ar=agencyRows(),c=f=>ar.filter(f).length;
  let tabs=[['All','All',ar.length],['Applicants','Applicants',c(TABS.Applicants)],['Active','Active Employees',c(TABS.Active)],['Separated','Separated',c(TABS.Separated)]];
- let picker=`<div class="field" style="max-width:380px;margin-bottom:16px"><label>Agency</label><select id="masterAgencySel" onchange="masterAgency=this.value;masterTab='All';masterQ='';renderF()"><option value="">Select Agency</option>${names.map(n=>`<option value="${esc(n)}" ${n===masterAgency?'selected':''}>${esc(n)} (${cnt(n)})</option>`).join('')}</select></div>`;
+ let picker=currentUser?.role==='agency'?
+   `<div class="field" style="max-width:380px;margin-bottom:16px"><label>Agency</label><input readonly value="${esc(currentUser.agency)}" style="background:#f1f5f9;font-weight:700"></div>`:
+   `<div class="field" style="max-width:380px;margin-bottom:16px"><label>Agency</label><select id="masterAgencySel" onchange="masterAgency=this.value;masterTab='All';masterQ='';renderF()"><option value="">Select Agency</option>${names.map(n=>`<option value="${esc(n)}" ${n===masterAgency?'selected':''}>${esc(n)} (${cnt(n)})</option>`).join('')}</select></div>`;
  let tools=masterAgency?`<div class="toolbar">${tabs.map(([k,n,v])=>`<button class="btn small ${masterTab===k?'':'secondary'}" onclick="masterTab='${k}';renderF()">${n} (${v})</button>`).join('')}</div><div class="toolbar"><input id="masterSearch" placeholder="Search name, tracking no., employee no., department..." value="${esc(masterQ)}" oninput="masterQ=this.value;$('masterTable').innerHTML=masterTable()"><button class="btn secondary" onclick="exportMaster()">Export This List</button><button class="btn secondary" onclick="window.print()">Print</button></div>`:'';
  $('content').innerHTML=`<div class="panel"><h2>Masterlist</h2><p class="sub">Select an agency to see its applicants and employees.</p>${picker}${tools}<div id="masterTable">${masterTable()}</div></div>`;
 }
@@ -330,6 +583,7 @@ function exportMaster(){
 }
 /* TEMP-REMOVE-START: delete this function together with the Clear All Records button before going online */
 function clearAllRecords(){
+ if(currentUser?.role!=='admin'){alert('Access denied: Only System Administrator can clear all records.');return;}
  let n=db.employees.length,m=db.items.length;
  if(!confirm('Delete ALL records?\n\n'+n+' employee record(s) and '+m+' accountable item issuance(s) will be permanently removed. This cannot be undone.'))return;
  if(!confirm('Final confirmation: clear everything now?'))return;
@@ -338,8 +592,8 @@ function clearAllRecords(){
  render();alert('All records have been cleared.');
 }
 /* TEMP-REMOVE-END */
-// Start directly without login credentials.
-render();
+// Check user authentication session on start
+checkAuth();
 </script>
 </body>
 </html>
