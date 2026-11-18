@@ -104,6 +104,10 @@ input:focus,select:focus,textarea:focus{border-color:#6395ed;box-shadow:0 0 0 3p
           <div style="font-weight:700;color:#143d2b">👔 Department Head</div>
           <div style="color:#64748b;font-size:10px">Assigned employees &amp; status</div>
         </button>
+        <button type="button" class="quick-login-btn" onclick="quickLogin('om','om123')">
+          <div style="font-weight:700;color:#143d2b">🏭 Operations Manager</div>
+          <div style="color:#64748b;font-size:10px">Operations &amp; clearance</div>
+        </button>
       </div>
     </div>
   </div>
@@ -198,6 +202,15 @@ const ROLES={
     canExport:false,
     canDelete:false,
     description:'Access to assigned employees, approvals, and status tracking'
+  },
+  om:{
+    title:'Operations Manager',
+    badge:'Operations & Clearance',
+    pages:['B','D','E','F'],
+    canClearAll:false,
+    canExport:true,
+    canDelete:false,
+    description:'Access to operational monitoring, approvals, clearance signatory, and masterlist'
   }
 };
 
@@ -207,19 +220,29 @@ const DEFAULT_USERS=[
   {username:'agency_top',password:'agency123',name:'Top Jinzai Coordinator',role:'agency',agency:'Top Jinzai'},
   {username:'agency_work',password:'agency123',name:'Workbridge Coordinator',role:'agency',agency:'Workbridge'},
   {username:'agency_multi',password:'agency123',name:'Multi Career Coordinator',role:'agency',agency:'Multi Career'},
-  {username:'dept_head',password:'dept123',name:'Department Head',role:'dept_head',department:''}
+  {username:'dept_head',password:'dept123',name:'Department Head',role:'dept_head',department:''},
+  {username:'om',password:'om123',name:'Operations Manager',role:'om'}
 ];
 
 function getUsers(){
   let s=localStorage.getItem(KEY_USERS);
   if(!s){localStorage.setItem(KEY_USERS,JSON.stringify(DEFAULT_USERS));return DEFAULT_USERS;}
-  try{return JSON.parse(s);}catch(e){return DEFAULT_USERS;}
+  try{
+    let list=JSON.parse(s);
+    DEFAULT_USERS.forEach(u=>{
+      if(!list.some(x=>x.username.toLowerCase()===u.username.toLowerCase())){
+        list.push(u);
+      }
+    });
+    localStorage.setItem(KEY_USERS,JSON.stringify(list));
+    return list;
+  }catch(e){return DEFAULT_USERS;}
 }
 
 let currentUser=null;
 function visibleEmployees(){
   if(!currentUser) return [];
-  if(currentUser.role==='admin' || currentUser.role==='hr') {
+  if(currentUser.role==='admin' || currentUser.role==='hr' || currentUser.role==='om') {
     return db.employees;
   }
   if(currentUser.role==='agency') {
@@ -590,7 +613,7 @@ function deleteRecord(id){
 function clearForm(){editingId=null;renderA()}
 function newRecord(){editingId=null;currentBId=null;setPage('A')}
 function filterTable(id,q){let t=$(id);if(!t)return;[...t.tBodies[0].rows].forEach(r=>r.style.display=r.innerText.toLowerCase().includes(q.toLowerCase())?'':'none')}
-function exportCSV(){let rows=[['Tracking Number','Surname','First Name','Middle Name','Agency','Coordinator','Deployment Date','Department','Position','Application Status','Requirements Status','Orientation','Employee Number','Start Date','Employment Status','Separation Date','Separation Reason'],...visibleEmployees().map(x=>[x.tracking,x.surname,x.firstName,x.middleName,x.agency,x.coordinator,x.deploymentDate,x.department,x.position,x.applicationStatus,(x.requirements||[]).join('; '),x.orientationCompletion,x.employeeNumber,x.startDate,x.employmentStatus,x.separationDate,x.separationReason])];let csv=rows.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',')).join('\r\n');let blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});let a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='Employee_Management_Records.csv';a.click();URL.revokeObjectURL(a.href)}
+function exportCSV(){let rows=[['Tracking Number','Surname','First Name','Middle Name','Agency','Coordinator','Deployment Date','Department','Position','Application Status','Requirements Status','Orientation','Start Date','Employment Status','Separation Date','Separation Reason'],...visibleEmployees().map(x=>[x.tracking,x.surname,x.firstName,x.middleName,x.agency,x.coordinator,x.deploymentDate,x.department,x.position,x.applicationStatus,(x.requirements||[]).join('; '),x.orientationCompletion,x.startDate,x.employmentStatus,x.separationDate,x.separationReason])];let csv=rows.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',')).join('\r\n');let blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});let a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='Employee_Management_Records.csv';a.click();URL.revokeObjectURL(a.href)}
 
 let masterTab='All', masterQ='', masterAgency='';
 const empStatus=x=>x.employmentStatus||'Applicant';
@@ -619,7 +642,7 @@ function selectMasterAgency(name){
 
 function masterRows(){
  let q=masterQ.toLowerCase();
- return agencyRows().filter(TABS[masterTab]).filter(x=>!q||[x.tracking,x.employeeNumber,x.employeeId,fullName(x),x.department,x.onboardDepartment,x.position,x.onboardPosition,x.teamLeader].join(' ').toLowerCase().includes(q)).sort((a,b)=>fullName(a).localeCompare(fullName(b)));
+ return agencyRows().filter(TABS[masterTab]).filter(x=>!q||[x.tracking,fullName(x),x.department,x.onboardDepartment,x.position,x.onboardPosition,x.teamLeader].join(' ').toLowerCase().includes(q)).sort((a,b)=>fullName(a).localeCompare(fullName(b)));
 }
 function masterTable(){
  if(!masterAgency)return '<div class="empty">Select an agency tab above to view its list of employees.</div>';
@@ -729,7 +752,7 @@ function exportMaster(){
    alert('Access denied: You are only authorized to export records for ' + currentUser.agency);
    return;
  }
- let rows=[['No.','Tracking Number','Employee Number','Surname','First Name','Middle Name','Birthday','Gender','Civil Status','Agency','Department','Position','Team Leader','Application Status','Employment Status','Start Date','Separation Date','Separation Reason'],...masterRows().map((x,i)=>[i+1,x.tracking,x.employeeNumber,x.surname,x.firstName,x.middleName,x.birthday,x.gender,x.civilStatus,x.agency,x.onboardDepartment||x.department,x.onboardPosition||x.position,x.teamLeader,x.applicationStatus,empStatus(x),x.startDate,x.separationDate,x.separationReason])];
+ let rows=[['No.','Tracking Number','Surname','First Name','Middle Name','Birthday','Gender','Civil Status','Agency','Department','Position','Team Leader','Application Status','Employment Status','Start Date','Separation Date','Separation Reason'],...masterRows().map((x,i)=>[i+1,x.tracking,x.surname,x.firstName,x.middleName,x.birthday,x.gender,x.civilStatus,x.agency,x.onboardDepartment||x.department,x.onboardPosition||x.position,x.teamLeader,x.applicationStatus,empStatus(x),x.startDate,x.separationDate,x.separationReason])];
  let csv=rows.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',')).join('\r\n');
  let a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'}));a.download='Masterlist_'+masterTab+'_'+masterAgency.replace(/\s+/g,'_')+'.csv';a.click();URL.revokeObjectURL(a.href);
 }
