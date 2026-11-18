@@ -325,6 +325,14 @@ function updateNavForRole(){
 }
 
 function setPage(p, empId=null){
+  if(currentUser){
+    const cfg=ROLES[currentUser.role]||ROLES.admin;
+    const allowed=cfg.pages||['A','B','C','D','E','F'];
+    if(!allowed.includes(p)){
+      alert('Access restricted: You do not have permission to access this module.');
+      return;
+    }
+  }
   page=p;
   if(empId!==null){
     editingId=empId;
@@ -377,6 +385,13 @@ function applicantsQuickList(){
 }
 
 function selectApplicant(id){
+  if(id && currentUser?.role==='agency'){
+    let target=db.employees.find(z=>z.id===id);
+    if(target && (target.agency||'').toLowerCase()!==(currentUser.agency||'').toLowerCase()){
+      alert('Access restricted: You cannot select records of another agency.');
+      return;
+    }
+  }
   editingId=id;
   currentBId=id;
   renderA();
@@ -483,7 +498,17 @@ function renderB(){let x=db.employees.find(z=>z.id===currentBId)||{};$('content'
  (x.childrenList||[]).forEach((c,i)=>{if(i<8){$('childName'+(i+1)).value=c.name||'';$('childAge'+(i+1)).value=c.age||''}});document.querySelectorAll('.educationCheck').forEach(e=>e.checked=(x.educationTypes||[]).includes(e.value));
 }
 function copyCurrentAddress(){['Province','City','Barangay','Street'].forEach(k=>{let a=$('cur'+k),b=$('per'+k);if(a&&b){b.value=a.value;if(k==='Province')loadCities(a.value,'perCity').then(()=>{$('perCity').value=$('curCity').value})}})}
-function loadB(id){currentBId=id||null;renderB()}
+function loadB(id){
+  if(id && currentUser?.role==='agency'){
+    let target=db.employees.find(z=>z.id===id);
+    if(target && (target.agency||'').toLowerCase()!==(currentUser.agency||'').toLowerCase()){
+      alert('Access restricted: You cannot load records of another agency.');
+      return;
+    }
+  }
+  currentBId=id||null;
+  renderB();
+}
 function saveB(){
  let x=db.employees.find(z=>z.id===currentBId);
  if(!x){
@@ -505,9 +530,19 @@ function saveB(){
  setPage('B', x.id);
 }
 
+function visibleItems(){
+  if(!currentUser) return [];
+  if(currentUser.role==='admin' || currentUser.role==='hr') return db.items;
+  if(currentUser.role==='agency'){
+    let myTrackings=new Set(visibleEmployees().map(e=>e.tracking));
+    return db.items.filter(it=>[...myTrackings].some(tr=>it.employee&&it.employee.startsWith(tr)));
+  }
+  return db.items;
+}
+
 function renderC(){
  let x=employee()||{};
- let empList=db.employees.map(empLabel);
+ let empList=visibleEmployees().map(empLabel);
  $('content').innerHTML=`<div class="panel"><h2>Issuance of Accountable Items</h2><p class="sub">Record issued property, quantity and condition. Link each issuance to an employee tracking number.</p><div class="grid">${field('Employee','itemEmployee','text',empList)}${field('Issuance Date','issueDate','date')}${field('Item','itemName','text',['Tablet (Gadget)','Stopwatch','Company ID','Cellphone','Vehicle Pass/Sticker','Freezer Jacket','Freezer Pants','Thermometer','Others'])}${field('Other Item (if applicable)','otherItem')}${field('Quantity','itemQty','number')}${field('Condition','itemCondition','text',['New','Good','Fair','Damaged'])}${area('Remarks','itemRemarks')}</div><div class="actions"><button class="btn" onclick="saveItem()">Save Issuance</button></div></div><div class="panel"><h2>Issuance Records</h2>${itemsTable()}</div>`;
  $('issueDate').value=today();
  if(selectedItemEmployee&&$('itemEmployee')){
@@ -518,18 +553,32 @@ function renderC(){
  }
 }
 function saveItem(){if(!val('itemEmployee')){alert('Select an employee.');return}db.items.push({id:String(Date.now()),employee:val('itemEmployee'),date:val('issueDate'),item:val('itemName')==='Others'?val('otherItem'):val('itemName'),qty:val('itemQty'),condition:val('itemCondition'),remarks:val('itemRemarks'),returned:false});save();alert('Accountable item issuance saved.');renderC()}
-function itemsTable(){if(!db.items.length)return '<div class="empty">No accountable items issued yet.</div>';return `<div class="table-wrap"><table><thead><tr><th>Employee</th><th>Date</th><th>Item</th><th>Qty</th><th>Condition</th><th>Return Status</th><th>Action</th></tr></thead><tbody>${db.items.map(x=>`<tr><td>${esc(x.employee)}</td><td>${esc(x.date)}</td><td>${esc(x.item)}</td><td>${esc(x.qty)}</td><td>${esc(x.condition)}</td><td><span class="pill ${x.returned?'green':'amber'}">${x.returned?'Returned':'Not yet returned'}</span></td><td><button class="btn small secondary" onclick="toggleReturn('${x.id}')">${x.returned?'Undo':'Mark Returned'}</button></td></tr>`).join('')}</tbody></table></div>`}
+function itemsTable(){let items=visibleItems();if(!items.length)return '<div class="empty">No accountable items issued yet for this agency.</div>';return `<div class="table-wrap"><table><thead><tr><th>Employee</th><th>Date</th><th>Item</th><th>Qty</th><th>Condition</th><th>Return Status</th><th>Action</th></tr></thead><tbody>${items.map(x=>`<tr><td>${esc(x.employee)}</td><td>${esc(x.date)}</td><td>${esc(x.item)}</td><td>${esc(x.qty)}</td><td>${esc(x.condition)}</td><td><span class="pill ${x.returned?'green':'amber'}">${x.returned?'Returned':'Not yet returned'}</span></td><td><button class="btn small secondary" onclick="toggleReturn('${x.id}')">${x.returned?'Undo':'Mark Returned'}</button></td></tr>`).join('')}</tbody></table></div>`}
 function toggleReturn(id){let x=db.items.find(x=>x.id===id);x.returned=!x.returned;save();renderC()}
-function renderD(){const returnItems=['Tablet (Gadget)','Stopwatch','Company ID','Cellphone','Vehicle Pass/Sticker','Freezer Jacket','Freezer Pants','Thermometer','Others'];$('content').innerHTML=`<div class="panel"><h2>Employee Clearance Process</h2><p class="sub">Record returned items, receiver details and signatory signatures. Date/time is automatically captured when a signature is entered.</p><div class="grid">${field('Employee','clearEmployee','text',db.employees.map(x=>`${x.tracking} — ${x.firstName||''} ${x.surname||''}`))}${field('Clearance Application Date','clearDate','date')}${field('Full Name','clearName')}${field('Area of Assignment','clearArea')}${field('Date Hired','dateHired','date')}${field('Last Date of Duty','lastDuty','date')}${field('Reason for Separation','clearReason','text',['AWOL','Resigned','Transferred to Other Company','End of Contract','Others'])}${area('Other Reason / Remarks','clearOther')}</div>${section('Returned Accountable Items — Quantity & Condition')}<div class="grid">${returnItems.map((n,i)=>`<div class="mini-card"><label class="checkrow"><input type="checkbox" class="returnedItem" value="${n}"> <b>${n}</b></label><div class="grid" style="margin-top:8px"><div class="field"><label>Returned Quantity</label><input id="retQty${i}" type="number" min="0"></div><div class="field"><label>Condition</label><select id="retCond${i}"><option value="">Select</option><option>Good</option><option>Fair</option><option>Damaged</option><option>Not Applicable</option></select></div></div></div>`).join('')}</div>${section('Received By')}<div class="grid"><div class="field"><label>Name of Receiver</label><input id="receivedBy" placeholder="Printed name"></div><div class="field"><label>Receiver Actual Signature</label><canvas id="receiverCanvas" class="signature-pad" aria-label="Receiver signature pad"></canvas><div class="signature-tools"><span class="signature-hint">Sign here using mouse or finger</span><button type="button" class="btn small secondary" onclick="clearSignaturePad('receiverCanvas','receiverStamp')">Clear</button></div><div class="stamp" id="receiverStamp">Not yet signed</div></div></div>${section('Signatory Clearance')}<div class="notice">Each signatory must draw their actual signature in the box using a mouse, stylus, or finger on a touchscreen. The exact date and time will be captured when they finish signing.</div><div class="grid">${['MHC - Human Resource','MHC - Accounting','MHC - Department Head','MHC - Operations Manager','Agency - Industrial Coordinator','Agency - Accounting','Agency - Human Resource'].map((n,i)=>`<div class="mini-card"><h4>${n}</h4><div class="field"><label>Status</label><select id="sig${i}"><option value="">Select status</option><option>Cleared</option><option>With Pending Accountability</option><option>Not Applicable</option></select><label>Printed Name</label><input id="sigPrintedName${i}" placeholder="Signatory full name"><label>Actual Signature</label><canvas id="sigCanvas${i}" class="signature-pad" aria-label="${n} signature pad"></canvas><div class="signature-tools"><span class="signature-hint">Sign here using mouse or finger</span><button type="button" class="btn small secondary" onclick="clearSignaturePad('sigCanvas${i}','sigStamp${i}')">Clear</button></div><div class="stamp" id="sigStamp${i}">Not yet signed</div><label>Remarks</label><input id="sigRemark${i}" placeholder="Remarks"></div></div>`).join('')}</div><div class="actions"><button class="btn" onclick="saveClearance()">Save Clearance</button></div></div><div class="panel"><h2>Clearance Records</h2><div id="clearanceList">${clearanceTable()}</div></div>`;$('clearDate').value=today();initSignaturePad('receiverCanvas','receiverStamp');for(let i=0;i<7;i++)initSignaturePad('sigCanvas'+i,'sigStamp'+i)}
+function renderD(){const returnItems=['Tablet (Gadget)','Stopwatch','Company ID','Cellphone','Vehicle Pass/Sticker','Freezer Jacket','Freezer Pants','Thermometer','Others'];$('content').innerHTML=`<div class="panel"><h2>Employee Clearance Process</h2><p class="sub">Record returned items, receiver details and signatory signatures. Date/time is automatically captured when a signature is entered.</p><div class="grid">${field('Employee','clearEmployee','text',visibleEmployees().map(empLabel))}${field('Clearance Application Date','clearDate','date')}${field('Full Name','clearName')}${field('Area of Assignment','clearArea')}${field('Date Hired','dateHired','date')}${field('Last Date of Duty','lastDuty','date')}${field('Reason for Separation','clearReason','text',['AWOL','Resigned','Transferred to Other Company','End of Contract','Others'])}${area('Other Reason / Remarks','clearOther')}</div>${section('Returned Accountable Items — Quantity & Condition')}<div class="grid">${returnItems.map((n,i)=>`<div class="mini-card"><label class="checkrow"><input type="checkbox" class="returnedItem" value="${n}"> <b>${n}</b></label><div class="grid" style="margin-top:8px"><div class="field"><label>Returned Quantity</label><input id="retQty${i}" type="number" min="0"></div><div class="field"><label>Condition</label><select id="retCond${i}"><option value="">Select</option><option>Good</option><option>Fair</option><option>Damaged</option><option>Not Applicable</option></select></div></div></div>`).join('')}</div>${section('Received By')}<div class="grid"><div class="field"><label>Name of Receiver</label><input id="receivedBy" placeholder="Printed name"></div><div class="field"><label>Receiver Actual Signature</label><canvas id="receiverCanvas" class="signature-pad" aria-label="Receiver signature pad"></canvas><div class="signature-tools"><span class="signature-hint">Sign here using mouse or finger</span><button type="button" class="btn small secondary" onclick="clearSignaturePad('receiverCanvas','receiverStamp')">Clear</button></div><div class="stamp" id="receiverStamp">Not yet signed</div></div></div>${section('Signatory Clearance')}<div class="notice">Each signatory must draw their actual signature in the box using a mouse, stylus, or finger on a touchscreen. The exact date and time will be captured when they finish signing.</div><div class="grid">${['MHC - Human Resource','MHC - Accounting','MHC - Department Head','MHC - Operations Manager','Agency - Industrial Coordinator','Agency - Accounting','Agency - Human Resource'].map((n,i)=>`<div class="mini-card"><h4>${n}</h4><div class="field"><label>Status</label><select id="sig${i}"><option value="">Select status</option><option>Cleared</option><option>With Pending Accountability</option><option>Not Applicable</option></select><label>Printed Name</label><input id="sigPrintedName${i}" placeholder="Signatory full name"><label>Actual Signature</label><canvas id="sigCanvas${i}" class="signature-pad" aria-label="${n} signature pad"></canvas><div class="signature-tools"><span class="signature-hint">Sign here using mouse or finger</span><button type="button" class="btn small secondary" onclick="clearSignaturePad('sigCanvas${i}','sigStamp${i}')">Clear</button></div><div class="stamp" id="sigStamp${i}">Not yet signed</div><label>Remarks</label><input id="sigRemark${i}" placeholder="Remarks"></div></div>`).join('')}</div><div class="actions"><button class="btn" onclick="saveClearance()">Save Clearance</button></div></div><div class="panel"><h2>Clearance Records</h2><div id="clearanceList">${clearanceTable()}</div></div>`;$('clearDate').value=today();initSignaturePad('receiverCanvas','receiverStamp');for(let i=0;i<7;i++)initSignaturePad('sigCanvas'+i,'sigStamp'+i)}
 function initSignaturePad(canvasId,stampId){const c=$(canvasId);if(!c)return;const ctx=c.getContext('2d');const rect=c.getBoundingClientRect();const ratio=Math.max(window.devicePixelRatio||1,1);c.width=Math.max(1,rect.width*ratio);c.height=Math.max(1,rect.height*ratio);ctx.scale(ratio,ratio);ctx.lineWidth=2.2;ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle='#172033';let drawing=false,hasInk=false;const pos=e=>{const r=c.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top}};c.addEventListener('pointerdown',e=>{e.preventDefault();drawing=true;c.setPointerCapture(e.pointerId);const p=pos(e);ctx.beginPath();ctx.moveTo(p.x,p.y)});c.addEventListener('pointermove',e=>{if(!drawing)return;e.preventDefault();const p=pos(e);ctx.lineTo(p.x,p.y);ctx.stroke();hasInk=true});const finish=()=>{if(!drawing)return;drawing=false;if(hasInk){c.dataset.signedAt=new Date().toISOString();c.dataset.hasSignature='1';const stamp=$(stampId);if(stamp)stamp.textContent='Signed: '+new Date(c.dataset.signedAt).toLocaleString()}};c.addEventListener('pointerup',finish);c.addEventListener('pointercancel',finish);c.addEventListener('pointerleave',e=>{if(e.buttons===0)finish()});c.dataset.hasSignature='0'}
 function clearSignaturePad(canvasId,stampId){const c=$(canvasId),stamp=$(stampId);if(!c)return;c.getContext('2d').clearRect(0,0,c.width,c.height);c.dataset.hasSignature='0';c.dataset.signedAt='';if(stamp)stamp.textContent='Not yet signed'}
 function signatureData(canvasId){const c=$(canvasId);return c&&c.dataset.hasSignature==='1'?c.toDataURL('image/png'):''}
-function clearanceTable(){let a=db.employees.filter(x=>x.clearance);if(!a.length)return '<div class="empty">No clearance records yet.</div>';return `<div class="table-wrap"><table><thead><tr><th>Employee</th><th>Application Date</th><th>Reason</th><th>Last Duty</th><th>Overall Status</th></tr></thead><tbody>${a.map(x=>`<tr><td>${esc(x.tracking)} — ${esc(x.clearName)}</td><td>${esc(x.clearance.date)}</td><td>${esc(x.clearance.reason)}</td><td>${esc(x.clearance.lastDuty)}</td><td><span class="pill">${esc(x.clearance.status)}</span></td></tr>`).join('')}</tbody></table></div>`}
+function clearanceTable(){let myTrackings=new Set(visibleEmployees().map(e=>e.tracking));let a=db.employees.filter(x=>x.clearance&&(currentUser?.role==='admin'||currentUser?.role==='hr'||myTrackings.has(x.tracking)));if(!a.length)return '<div class="empty">No clearance records yet.</div>';return `<div class="table-wrap"><table><thead><tr><th>Employee</th><th>Application Date</th><th>Reason</th><th>Last Duty</th><th>Overall Status</th></tr></thead><tbody>${a.map(x=>`<tr><td>${esc(x.tracking)} — ${esc(x.clearName)}</td><td>${esc(x.clearance.date)}</td><td>${esc(x.clearance.reason)}</td><td>${esc(x.clearance.lastDuty)}</td><td><span class="pill">${esc(x.clearance.status)}</span></td></tr>`).join('')}</tbody></table></div>`}
 function saveClearance(){let chosen=val('clearEmployee');let emp=db.employees.find(x=>chosen.startsWith(x.tracking));if(!emp){alert('Select a valid employee.');return}let sign=[];for(let i=0;i<7;i++){let canvas=$('sigCanvas'+i),old=emp.clearance?.sign?.[i]||{},image=signatureData('sigCanvas'+i),signedAt=image?(canvas.dataset.signedAt||new Date().toISOString()):'';sign.push({status:val('sig'+i),name:val('sigPrintedName'+i),signature:image,signatureData:image,signedAt,remarks:val('sigRemark'+i)})}let statuses=sign.map(x=>x.status);let status=statuses.every(x=>x==='Cleared'||x==='Not Applicable')?'Cleared':statuses.some(x=>x==='With Pending Accountability')?'With Pending Accountability':'In Progress';let returned=[];document.querySelectorAll('.returnedItem').forEach((e,i)=>{if(e.checked)returned.push({item:e.value,qty:val('retQty'+i),condition:val('retCond'+i)})});let receiverImage=signatureData('receiverCanvas'),receiverCanvas=$('receiverCanvas');emp.clearance={date:val('clearDate'),name:val('clearName'),area:val('clearArea'),dateHired:val('dateHired'),lastDuty:val('lastDuty'),reason:val('clearReason'),other:val('clearOther'),returned,receivedBy:val('receivedBy'),receiverSignature:receiverImage,receiverSignatureData:receiverImage,receiverSignedAt:receiverImage?(receiverCanvas.dataset.signedAt||new Date().toISOString()):'',sign,status};emp.separationDate=val('lastDuty');emp.separationReason=val('clearReason');emp.clearanceStatus=status;emp.employmentStatus='Separated';save();alert('Clearance record saved with actual signature images and signing timestamps.');renderD()}
 
-function renderE(){let all=visibleEmployees(), count=s=>all.filter(x=>(x.employmentStatus||'Applicant')===s).length;let apps=all.length, approvals=all.filter(x=>x.applicationStatus==='Approved').length, req=all.filter(x=>x.verification==='Verified').length, orient=all.filter(x=>x.orientationCompletion==='Completed').length, active=count('Active'), separated=count('Separated');$('content').innerHTML=`<div class="cards">${[['Total Applicants',apps],['Approved',approvals],['Requirements Verified',req],['Orientation Completed',orient],['For Onboarding',count('For Onboarding')],['Active Employees',active],['Separated',separated],['Accountable Items',db.items.length]].map(([n,v])=>`<div class="stat"><small>${n}</small><strong>${v}</strong></div>`).join('')}</div><div class="panel"><h2>Employee Application Status</h2><p class="sub">Overview of records by current employment status.</p>${dashboardTable()}</div><div class="panel"><h2>Monitoring Overview</h2><div class="grid three">${[['Application Monitoring',all.filter(x=>x.applicationDate).length],['Approval Monitoring',all.filter(x=>x.applicationStatus).length],['Requirements Monitoring',all.filter(x=>x.verification).length],['Orientation Monitoring',all.filter(x=>x.orientationDate).length],['Onboarding Monitoring',all.filter(x=>x.startDate).length],['Active Monitoring',active],['Separated Monitoring',separated]].map(([n,v])=>`<div class="stat"><small>${n}</small><strong>${v}</strong></div>`).join('')}</div></div>`}
+function renderE(){let all=visibleEmployees(), count=s=>all.filter(x=>(x.employmentStatus||'Applicant')===s).length;let apps=all.length, approvals=all.filter(x=>x.applicationStatus==='Approved').length, req=all.filter(x=>x.verification==='Verified').length, orient=all.filter(x=>x.orientationCompletion==='Completed').length, active=count('Active'), separated=count('Separated');$('content').innerHTML=`<div class="cards">${[['Total Applicants',apps],['Approved',approvals],['Requirements Verified',req],['Orientation Completed',orient],['For Onboarding',count('For Onboarding')],['Active Employees',active],['Separated',separated],['Accountable Items',visibleItems().length]].map(([n,v])=>`<div class="stat"><small>${n}</small><strong>${v}</strong></div>`).join('')}</div><div class="panel"><h2>Employee Application Status</h2><p class="sub">Overview of records by current employment status.</p>${dashboardTable()}</div><div class="panel"><h2>Monitoring Overview</h2><div class="grid three">${[['Application Monitoring',all.filter(x=>x.applicationDate).length],['Approval Monitoring',all.filter(x=>x.applicationStatus).length],['Requirements Monitoring',all.filter(x=>x.verification).length],['Orientation Monitoring',all.filter(x=>x.orientationDate).length],['Onboarding Monitoring',all.filter(x=>x.startDate).length],['Active Monitoring',active],['Separated Monitoring',separated]].map(([n,v])=>`<div class="stat"><small>${n}</small><strong>${v}</strong></div>`).join('')}</div></div>`}
 function dashboardTable(){let employees=visibleEmployees();if(!employees.length)return '<div class="empty">No records to monitor.</div>';return `<div class="table-wrap"><table><thead><tr><th>Tracking No.</th><th>Employee</th><th>Agency</th><th>Department</th><th>Application</th><th>Requirements</th><th>Employment</th></tr></thead><tbody>${employees.map(x=>`<tr><td>${esc(x.tracking)}</td><td>${esc([x.firstName,x.middleName,x.surname].filter(Boolean).join(' ')||'—')}</td><td>${esc(x.agency)}</td><td>${esc(x.department||x.onboardDepartment)}</td><td>${esc(x.applicationStatus||'Pending')}</td><td>${esc(x.verification||'Pending')}</td><td>${esc(x.employmentStatus||'Applicant')}</td></tr>`).join('')}</tbody></table></div>`}
-function editRecord(id){page='B';document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.page==='B'));editingId=id;render();window.scrollTo(0,0)}
+function editRecord(id){
+  if(id && currentUser?.role==='agency'){
+    let target=db.employees.find(z=>z.id===id);
+    if(target && (target.agency||'').toLowerCase()!==(currentUser.agency||'').toLowerCase()){
+      alert('Access restricted: You cannot edit records of another agency.');
+      return;
+    }
+  }
+  page='B';
+  document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.page==='B'));
+  editingId=id;
+  currentBId=id;
+  render();
+  window.scrollTo(0,0);
+}
 function deleteRecord(id){
  const cfg=ROLES[currentUser?.role]||ROLES.admin;
  if(!cfg.canDelete){
@@ -541,42 +590,145 @@ function deleteRecord(id){
 function clearForm(){editingId=null;renderA()}
 function newRecord(){editingId=null;currentBId=null;setPage('A')}
 function filterTable(id,q){let t=$(id);if(!t)return;[...t.tBodies[0].rows].forEach(r=>r.style.display=r.innerText.toLowerCase().includes(q.toLowerCase())?'':'none')}
-function exportCSV(){let rows=[['Tracking Number','Surname','First Name','Middle Name','Agency','Coordinator','Deployment Date','Department','Position','Application Status','Requirements Status','Orientation','Employee Number','Start Date','Employment Status','Separation Date','Separation Reason'],...db.employees.map(x=>[x.tracking,x.surname,x.firstName,x.middleName,x.agency,x.coordinator,x.deploymentDate,x.department,x.position,x.applicationStatus,(x.requirements||[]).join('; '),x.orientationCompletion,x.employeeNumber,x.startDate,x.employmentStatus,x.separationDate,x.separationReason])];let csv=rows.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',')).join('\r\n');let blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});let a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='Employee_Management_Records.csv';a.click();URL.revokeObjectURL(a.href)}
+function exportCSV(){let rows=[['Tracking Number','Surname','First Name','Middle Name','Agency','Coordinator','Deployment Date','Department','Position','Application Status','Requirements Status','Orientation','Employee Number','Start Date','Employment Status','Separation Date','Separation Reason'],...visibleEmployees().map(x=>[x.tracking,x.surname,x.firstName,x.middleName,x.agency,x.coordinator,x.deploymentDate,x.department,x.position,x.applicationStatus,(x.requirements||[]).join('; '),x.orientationCompletion,x.employeeNumber,x.startDate,x.employmentStatus,x.separationDate,x.separationReason])];let csv=rows.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',')).join('\r\n');let blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});let a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='Employee_Management_Records.csv';a.click();URL.revokeObjectURL(a.href)}
 
 let masterTab='All', masterQ='', masterAgency='';
 const empStatus=x=>x.employmentStatus||'Applicant';
 const agencyOf=x=>x.agency||'No Agency';
 const agencyRank=n=>{let i=AGENCIES.indexOf(n);return i>=0?i:n==='No Agency'?999:100};
 const TABS={All:()=>true,Applicants:x=>['Applicant','For Onboarding'].includes(empStatus(x)),Active:x=>empStatus(x)==='Active',Separated:x=>empStatus(x)==='Separated'};
-function agencyRows(){return masterAgency?db.employees.filter(x=>agencyOf(x)===masterAgency):[]}
+
+function agencyRows(){
+ if(!masterAgency)return [];
+ if(currentUser?.role==='agency' && masterAgency.toLowerCase() !== (currentUser.agency||'').toLowerCase()){
+   return []; // Strictly blocked from accessing other agencies
+ }
+ return db.employees.filter(x=>agencyOf(x).toLowerCase()===masterAgency.toLowerCase());
+}
+
+function selectMasterAgency(name){
+ if(currentUser?.role==='agency' && name.toLowerCase() !== (currentUser.agency||'').toLowerCase()){
+   alert('Access restricted: You only have permission to view ' + currentUser.agency);
+   return;
+ }
+ masterAgency = name;
+ masterTab = 'All';
+ masterQ = '';
+ renderF();
+}
+
 function masterRows(){
  let q=masterQ.toLowerCase();
  return agencyRows().filter(TABS[masterTab]).filter(x=>!q||[x.tracking,x.employeeNumber,x.employeeId,fullName(x),x.department,x.onboardDepartment,x.position,x.onboardPosition,x.teamLeader].join(' ').toLowerCase().includes(q)).sort((a,b)=>fullName(a).localeCompare(fullName(b)));
 }
 function masterTable(){
- if(!masterAgency)return '<div class="empty">Select an agency above to view its list of employees.</div>';
+ if(!masterAgency)return '<div class="empty">Select an agency tab above to view its list of employees.</div>';
  let r=masterRows();
  if(!r.length)return '<div class="empty">No records found for '+esc(masterAgency)+'.</div>';
  return `<div class="table-wrap"><table><thead><tr><th>#</th><th>Tracking No.</th><th>Full Name</th><th>Department</th><th>Position</th><th>Application</th><th>Status</th><th>Start Date</th><th>Action</th></tr></thead><tbody>${r.map((x,i)=>`<tr><td>${i+1}</td><td>${esc(x.tracking)}</td><td><b>${esc(fullName(x))}</b></td><td>${esc(x.onboardDepartment||x.department||'—')}</td><td>${esc(x.onboardPosition||x.position||'—')}</td><td>${esc(x.applicationStatus||'Pending')}</td><td><span class="pill ${empStatus(x)==='Active'?'green':empStatus(x)==='Separated'?'amber':''}">${esc(empStatus(x))}</span></td><td>${esc(x.startDate||'—')}</td><td style="white-space:nowrap"><button class="btn small secondary" onclick="editPersonal('${x.id}')">Personal</button> <button class="btn small secondary" onclick="editRecord('${x.id}')">Deployment</button></td></tr>`).join('')}</tbody></table></div>`;
 }
+
 function renderF(){
- let names=[...AGENCIES,...new Set(db.employees.map(agencyOf).filter(n=>!AGENCIES.includes(n)))];
- if(currentUser?.role==='agency'){
-   names=[currentUser.agency];
-   masterAgency=currentUser.agency;
+ const agencies = ['Top Jinzai', 'Workbridge', 'Multi Career'];
+ let activeAgencies = agencies;
+ if(currentUser?.role === 'agency'){
+   // Strictly locked to own agency! Other agency tabs are hidden completely.
+   activeAgencies = [currentUser.agency || 'Top Jinzai'];
+   masterAgency = currentUser.agency || 'Top Jinzai';
+ } else {
+   if(!masterAgency || !agencies.some(a=>a.toLowerCase()===masterAgency.toLowerCase())){
+     masterAgency = agencies[0];
+   }
  }
- let cnt=n=>db.employees.filter(x=>agencyOf(x)===n).length;
- let ar=agencyRows(),c=f=>ar.filter(f).length;
- let tabs=[['All','All',ar.length],['Applicants','Applicants',c(TABS.Applicants)],['Active','Active Employees',c(TABS.Active)],['Separated','Separated',c(TABS.Separated)]];
- let picker=currentUser?.role==='agency'?
-   `<div class="field" style="max-width:380px;margin-bottom:16px"><label>Agency</label><input readonly value="${esc(currentUser.agency)}" style="background:#f1f5f9;font-weight:700"></div>`:
-   `<div class="field" style="max-width:380px;margin-bottom:16px"><label>Agency</label><select id="masterAgencySel" onchange="masterAgency=this.value;masterTab='All';masterQ='';renderF()"><option value="">Select Agency</option>${names.map(n=>`<option value="${esc(n)}" ${n===masterAgency?'selected':''}>${esc(n)} (${cnt(n)})</option>`).join('')}</select></div>`;
- let tools=masterAgency?`<div class="toolbar">${tabs.map(([k,n,v])=>`<button class="btn small ${masterTab===k?'':'secondary'}" onclick="masterTab='${k}';renderF()">${n} (${v})</button>`).join('')}</div><div class="toolbar"><input id="masterSearch" placeholder="Search name, tracking no., employee no., department..." value="${esc(masterQ)}" oninput="masterQ=this.value;$('masterTable').innerHTML=masterTable()"><button class="btn secondary" onclick="exportMaster()">Export This List</button><button class="btn secondary" onclick="window.print()">Print</button></div>`:'';
- $('content').innerHTML=`<div class="panel"><h2>Masterlist</h2><p class="sub">Select an agency to see its applicants and employees.</p>${picker}${tools}<div id="masterTable">${masterTable()}</div></div>`;
+
+ let agencyTabsHtml = activeAgencies.map(n => {
+   let isActive = (masterAgency.toLowerCase() === n.toLowerCase());
+   let count = db.employees.filter(x => agencyOf(x).toLowerCase() === n.toLowerCase()).length;
+   return `
+     <button type="button" class="btn ${isActive ? '' : 'secondary'}" 
+             style="${isActive ? 'background:#143d2b; color:white; font-weight:700; border:1px solid #143d2b; box-shadow:0 2px 6px rgba(20,61,43,0.25);' : 'background:#eef2f6; color:#243c5a; font-weight:600; border:1px solid #cbd5e1;'} padding:10px 18px; border-radius:10px; display:inline-flex; align-items:center; gap:8px; cursor:pointer;"
+             onclick="selectMasterAgency('${esc(n)}')">
+       <span>🏢 ${esc(n)}</span>
+       <span style="${isActive ? 'background:rgba(255,255,255,0.25); color:#fff;' : 'background:#cbd5e1; color:#1e293b;'} font-size:11px; padding:2px 8px; border-radius:12px; font-weight:700;">
+         ${count}
+       </span>
+     </button>
+   `;
+ }).join('');
+
+ let ar = agencyRows();
+ let c = f => ar.filter(f).length;
+ let statusTabs = [
+   ['All', 'All', ar.length],
+   ['Applicants', 'Applicants', c(TABS.Applicants)],
+   ['Active', 'Active Employees', c(TABS.Active)],
+   ['Separated', 'Separated', c(TABS.Separated)]
+ ];
+
+ let tools = `
+   <div style="background:#f8fafc; border:1px solid var(--line); border-radius:10px; padding:12px 14px; margin-bottom:16px;">
+     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+       <div style="display:flex; gap:6px; flex-wrap:wrap;">
+         ${statusTabs.map(([k,n,v])=>`
+           <button type="button" class="btn small ${masterTab===k?'':'secondary'}" 
+                   style="${masterTab===k?'background:#1e563d; color:white; font-weight:700;':''}"
+                   onclick="masterTab='${k}';renderF()">
+             ${n} (${v})
+           </button>
+         `).join('')}
+       </div>
+       <div style="display:flex; gap:8px; flex-wrap:wrap;">
+         <button type="button" class="btn small secondary" onclick="exportMaster()">📥 Export ${esc(masterAgency)} CSV</button>
+         <button type="button" class="btn small secondary" onclick="window.print()">🖨️ Print</button>
+       </div>
+     </div>
+     <div class="toolbar" style="margin-bottom:0;">
+       <input id="masterSearch" placeholder="Search name, tracking no., position, department in ${esc(masterAgency)}..." 
+              value="${esc(masterQ)}" oninput="masterQ=this.value;$('masterTable').innerHTML=masterTable()" style="max-width:380px;">
+     </div>
+   </div>
+ `;
+
+ $('content').innerHTML = `
+   <div class="panel">
+     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:14px;">
+       <div>
+         <h2 style="margin:0 0 4px;">Agency Masterlist</h2>
+         <p class="sub" style="margin:0;">Select an agency tab below to view, filter, and manage employees.</p>
+       </div>
+       ${currentUser?.role === 'agency' ? `<span class="pill green" style="font-size:12px; padding:6px 14px;">Logged in: <b>${esc(currentUser.agency)}</b></span>` : ''}
+     </div>
+     <div style="margin-bottom:18px;">
+       <label style="font-size:11px; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:8px;">
+         Agency Tabs:
+       </label>
+       <div style="display:flex; gap:8px; flex-wrap:wrap;">
+         ${agencyTabsHtml}
+       </div>
+     </div>
+     ${tools}
+     <div id="masterTable">${masterTable()}</div>
+   </div>
+ `;
 }
-function editPersonal(id){currentBId=id;setPage('A')}
+
+function editPersonal(id){
+  if(id && currentUser?.role==='agency'){
+    let target=db.employees.find(z=>z.id===id);
+    if(target && (target.agency||'').toLowerCase()!==(currentUser.agency||'').toLowerCase()){
+      alert('Access restricted: You cannot edit records of another agency.');
+      return;
+    }
+  }
+  currentBId=id;
+  setPage('A');
+}
 function exportMaster(){
  if(!masterAgency){alert('Select an agency first.');return}
+ if(currentUser?.role==='agency' && masterAgency.toLowerCase() !== (currentUser.agency||'').toLowerCase()){
+   alert('Access denied: You are only authorized to export records for ' + currentUser.agency);
+   return;
+ }
  let rows=[['No.','Tracking Number','Employee Number','Surname','First Name','Middle Name','Birthday','Gender','Civil Status','Agency','Department','Position','Team Leader','Application Status','Employment Status','Start Date','Separation Date','Separation Reason'],...masterRows().map((x,i)=>[i+1,x.tracking,x.employeeNumber,x.surname,x.firstName,x.middleName,x.birthday,x.gender,x.civilStatus,x.agency,x.onboardDepartment||x.department,x.onboardPosition||x.position,x.teamLeader,x.applicationStatus,empStatus(x),x.startDate,x.separationDate,x.separationReason])];
  let csv=rows.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',')).join('\r\n');
  let a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'}));a.download='Masterlist_'+masterTab+'_'+masterAgency.replace(/\s+/g,'_')+'.csv';a.click();URL.revokeObjectURL(a.href);
