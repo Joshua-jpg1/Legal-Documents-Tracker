@@ -149,6 +149,7 @@ input:focus,select:focus,textarea:focus{border-color:#6395ed;box-shadow:0 0 0 3p
    <h1 id="pageTitle">Personal Information</h1>
   </div>
   <div class="top-actions">
+   <div id="syncStatus" class="pill" onclick="syncWithServer()" style="font-size:11px;background:#ecfdf5;color:#065f46;border:1px solid #86efac;cursor:pointer;display:inline-flex;align-items:center;gap:6px" title="Multi-PC Live Sync. Click to refresh."><span>🟢</span> <b>Multi-PC Sync</b></div>
    <div id="userProfileTag" style="display:flex;align-items:center;gap:6px"></div>
    <button class="btn secondary" id="exportBtn" onclick="exportCSV()">Export Records</button>
    <button class="btn" id="newRecordBtn" onclick="newRecord()">+ New Record</button>
@@ -261,6 +262,110 @@ function visibleEmployees(){
 
 const $=id=>document.getElementById(id);
 const save=()=>localStorage.setItem(KEY,JSON.stringify(db));
+
+let isSyncing = false;
+let isUserTyping = false;
+
+document.addEventListener('input', () => {
+  isUserTyping = true;
+  clearTimeout(window._typingTimer);
+  window._typingTimer = setTimeout(() => { isUserTyping = false; }, 4000);
+});
+
+function updateSyncBadge(online, storage) {
+  let el = $('syncStatus');
+  if (!el) return;
+  if (online) {
+    el.innerHTML = `<span>🟢</span> <span title="${esc(storage || 'Render Live Backend')}">Multi-PC Live Sync</span>`;
+    el.style.background = '#ecfdf5';
+    el.style.color = '#065f46';
+    el.style.borderColor = '#86efac';
+  } else {
+    el.innerHTML = `<span>🟡</span> <span>Local Browser Mode</span>`;
+    el.style.background = '#fefce8';
+    el.style.color = '#854d0e';
+    el.style.borderColor = '#fef08a';
+  }
+}
+
+async function syncWithServer() {
+  if (isSyncing) return;
+  isSyncing = true;
+  try {
+    let res = await fetch('/api/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ employees: db.employees || [], items: db.items || [] })
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    let data = await res.json();
+    if (data.ok) {
+      updateSyncBadge(true, data.storage);
+      let empsChanged = JSON.stringify(db.employees) !== JSON.stringify(data.employees);
+      let itemsChanged = JSON.stringify(db.items) !== JSON.stringify(data.items);
+      db.employees = data.employees || [];
+      db.items = data.items || [];
+      localStorage.setItem(KEY, JSON.stringify(db));
+
+      if ((empsChanged || itemsChanged) && !isUserTyping) {
+        if (['C', 'D', 'E', 'F'].includes(page)) {
+          render();
+        } else if (page === 'B') {
+          let quick = $('quickAppTable');
+          if (quick) {
+            let panel = quick.closest('.panel');
+            if (panel) {
+              let headerDiv = panel.querySelector('div');
+              let headerHtml = headerDiv ? headerDiv.outerHTML : '';
+              panel.innerHTML = `${headerHtml}${applicantsQuickList()}`;
+            }
+          }
+        }
+      }
+    }
+  } catch (e) {
+    updateSyncBadge(false);
+  } finally {
+    isSyncing = false;
+  }
+}
+
+async function apiSaveEmployee(emp) {
+  if (!emp) return;
+  try {
+    await fetch('/api/employees', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(emp)
+    });
+    updateSyncBadge(true);
+  } catch (e) {
+    console.warn('API save employee failed, stored locally:', e);
+  }
+}
+
+async function apiDeleteEmployee(id) {
+  try {
+    await fetch('/api/employees/' + encodeURIComponent(id), { method: 'DELETE' });
+  } catch (e) {}
+}
+
+async function apiSaveItem(item) {
+  if (!item) return;
+  try {
+    await fetch('/api/items', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(item)
+    });
+  } catch (e) {}
+}
+
+async function apiClearAll() {
+  try {
+    await fetch('/api/clear-all', { method: 'POST' });
+  } catch (e) {}
+}
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const val=id=>$(id)?.value?.trim()||'';
 const today=()=>new Date().toISOString().slice(0,10);
@@ -495,6 +600,7 @@ function saveA(proceedToItems=true){
  if(editingId){let i=db.employees.findIndex(x=>x.id===editingId);db.employees[i]={...db.employees[i],...data,updatedAt:now};targetId=db.employees[i].id}else{let newId=crypto.randomUUID?crypto.randomUUID():String(Date.now());db.employees.push({id:newId,...data,createdAt:now});targetId=newId}
  save();
  let emp=db.employees.find(x=>x.id===targetId);
+ apiSaveEmployee(emp);
  let name=fullName(emp)!=='—'?fullName(emp):emp.tracking;
  if(proceedToItems){
    alert('Deployment information for "' + name + '" saved successfully!\n\nProceeding directly to Accountable Items...');
@@ -547,6 +653,7 @@ function saveB(){
  if(!x.employmentStatus)x.employmentStatus='Applicant';
  if(currentUser?.role==='agency')x.agency=currentUser.agency;
  save();
+ apiSaveEmployee(x);
  let name=fullName(x)!=='—'?fullName(x):x.tracking;
  alert('Personal information for "' + name + '" saved successfully!\n\nProceeding directly to Deployment Information...');
  editingId=x.id;
@@ -575,15 +682,15 @@ function renderC(){
    if(match)$('itemEmployee').value=match;
  }
 }
-function saveItem(){if(!val('itemEmployee')){alert('Select an employee.');return}db.items.push({id:String(Date.now()),employee:val('itemEmployee'),date:val('issueDate'),item:val('itemName')==='Others'?val('otherItem'):val('itemName'),qty:val('itemQty'),condition:val('itemCondition'),remarks:val('itemRemarks'),returned:false});save();alert('Accountable item issuance saved.');renderC()}
+function saveItem(){if(!val('itemEmployee')){alert('Select an employee.');return}let newItem={id:String(Date.now()),employee:val('itemEmployee'),date:val('issueDate'),item:val('itemName')==='Others'?val('otherItem'):val('itemName'),qty:val('itemQty'),condition:val('itemCondition'),remarks:val('itemRemarks'),returned:false};db.items.push(newItem);save();apiSaveItem(newItem);alert('Accountable item issuance saved.');renderC()}
 function itemsTable(){let items=visibleItems();if(!items.length)return '<div class="empty">No accountable items issued yet for this agency.</div>';return `<div class="table-wrap"><table><thead><tr><th>Employee</th><th>Date</th><th>Item</th><th>Qty</th><th>Condition</th><th>Return Status</th><th>Action</th></tr></thead><tbody>${items.map(x=>`<tr><td>${esc(x.employee)}</td><td>${esc(x.date)}</td><td>${esc(x.item)}</td><td>${esc(x.qty)}</td><td>${esc(x.condition)}</td><td><span class="pill ${x.returned?'green':'amber'}">${x.returned?'Returned':'Not yet returned'}</span></td><td><button class="btn small secondary" onclick="toggleReturn('${x.id}')">${x.returned?'Undo':'Mark Returned'}</button></td></tr>`).join('')}</tbody></table></div>`}
-function toggleReturn(id){let x=db.items.find(x=>x.id===id);x.returned=!x.returned;save();renderC()}
+function toggleReturn(id){let x=db.items.find(x=>x.id===id);x.returned=!x.returned;save();apiSaveItem(x);renderC()}
 function renderD(){const returnItems=['Tablet (Gadget)','Stopwatch','Company ID','Cellphone','Vehicle Pass/Sticker','Freezer Jacket','Freezer Pants','Thermometer','Others'];$('content').innerHTML=`<div class="panel"><h2>Employee Clearance Process</h2><p class="sub">Record returned items, receiver details and signatory signatures. Date/time is automatically captured when a signature is entered.</p><div class="grid">${field('Employee','clearEmployee','text',visibleEmployees().map(empLabel))}${field('Clearance Application Date','clearDate','date')}${field('Full Name','clearName')}${field('Area of Assignment','clearArea')}${field('Date Hired','dateHired','date')}${field('Last Date of Duty','lastDuty','date')}${field('Reason for Separation','clearReason','text',['AWOL','Resigned','Transferred to Other Company','End of Contract','Others'])}${area('Other Reason / Remarks','clearOther')}</div>${section('Returned Accountable Items — Quantity & Condition')}<div class="grid">${returnItems.map((n,i)=>`<div class="mini-card"><label class="checkrow"><input type="checkbox" class="returnedItem" value="${n}"> <b>${n}</b></label><div class="grid" style="margin-top:8px"><div class="field"><label>Returned Quantity</label><input id="retQty${i}" type="number" min="0"></div><div class="field"><label>Condition</label><select id="retCond${i}"><option value="">Select</option><option>Good</option><option>Fair</option><option>Damaged</option><option>Not Applicable</option></select></div></div></div>`).join('')}</div>${section('Received By')}<div class="grid"><div class="field"><label>Name of Receiver</label><input id="receivedBy" placeholder="Printed name"></div><div class="field"><label>Receiver Actual Signature</label><canvas id="receiverCanvas" class="signature-pad" aria-label="Receiver signature pad"></canvas><div class="signature-tools"><span class="signature-hint">Sign here using mouse or finger</span><button type="button" class="btn small secondary" onclick="clearSignaturePad('receiverCanvas','receiverStamp')">Clear</button></div><div class="stamp" id="receiverStamp">Not yet signed</div></div></div>${section('Signatory Clearance')}<div class="notice">Each signatory must draw their actual signature in the box using a mouse, stylus, or finger on a touchscreen. The exact date and time will be captured when they finish signing.</div><div class="grid">${['MHC - Human Resource','MHC - Accounting','MHC - Department Head','MHC - Operations Manager','Agency - Industrial Coordinator','Agency - Accounting','Agency - Human Resource'].map((n,i)=>`<div class="mini-card"><h4>${n}</h4><div class="field"><label>Status</label><select id="sig${i}"><option value="">Select status</option><option>Cleared</option><option>With Pending Accountability</option><option>Not Applicable</option></select><label>Printed Name</label><input id="sigPrintedName${i}" placeholder="Signatory full name"><label>Actual Signature</label><canvas id="sigCanvas${i}" class="signature-pad" aria-label="${n} signature pad"></canvas><div class="signature-tools"><span class="signature-hint">Sign here using mouse or finger</span><button type="button" class="btn small secondary" onclick="clearSignaturePad('sigCanvas${i}','sigStamp${i}')">Clear</button></div><div class="stamp" id="sigStamp${i}">Not yet signed</div><label>Remarks</label><input id="sigRemark${i}" placeholder="Remarks"></div></div>`).join('')}</div><div class="actions"><button class="btn" onclick="saveClearance()">Save Clearance</button></div></div><div class="panel"><h2>Clearance Records</h2><div id="clearanceList">${clearanceTable()}</div></div>`;$('clearDate').value=today();initSignaturePad('receiverCanvas','receiverStamp');for(let i=0;i<7;i++)initSignaturePad('sigCanvas'+i,'sigStamp'+i)}
 function initSignaturePad(canvasId,stampId){const c=$(canvasId);if(!c)return;const ctx=c.getContext('2d');const rect=c.getBoundingClientRect();const ratio=Math.max(window.devicePixelRatio||1,1);c.width=Math.max(1,rect.width*ratio);c.height=Math.max(1,rect.height*ratio);ctx.scale(ratio,ratio);ctx.lineWidth=2.2;ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle='#172033';let drawing=false,hasInk=false;const pos=e=>{const r=c.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top}};c.addEventListener('pointerdown',e=>{e.preventDefault();drawing=true;c.setPointerCapture(e.pointerId);const p=pos(e);ctx.beginPath();ctx.moveTo(p.x,p.y)});c.addEventListener('pointermove',e=>{if(!drawing)return;e.preventDefault();const p=pos(e);ctx.lineTo(p.x,p.y);ctx.stroke();hasInk=true});const finish=()=>{if(!drawing)return;drawing=false;if(hasInk){c.dataset.signedAt=new Date().toISOString();c.dataset.hasSignature='1';const stamp=$(stampId);if(stamp)stamp.textContent='Signed: '+new Date(c.dataset.signedAt).toLocaleString()}};c.addEventListener('pointerup',finish);c.addEventListener('pointercancel',finish);c.addEventListener('pointerleave',e=>{if(e.buttons===0)finish()});c.dataset.hasSignature='0'}
 function clearSignaturePad(canvasId,stampId){const c=$(canvasId),stamp=$(stampId);if(!c)return;c.getContext('2d').clearRect(0,0,c.width,c.height);c.dataset.hasSignature='0';c.dataset.signedAt='';if(stamp)stamp.textContent='Not yet signed'}
 function signatureData(canvasId){const c=$(canvasId);return c&&c.dataset.hasSignature==='1'?c.toDataURL('image/png'):''}
 function clearanceTable(){let myTrackings=new Set(visibleEmployees().map(e=>e.tracking));let a=db.employees.filter(x=>x.clearance&&(currentUser?.role==='admin'||currentUser?.role==='hr'||myTrackings.has(x.tracking)));if(!a.length)return '<div class="empty">No clearance records yet.</div>';return `<div class="table-wrap"><table><thead><tr><th>Employee</th><th>Application Date</th><th>Reason</th><th>Last Duty</th><th>Overall Status</th></tr></thead><tbody>${a.map(x=>`<tr><td>${esc(x.tracking)} — ${esc(x.clearName)}</td><td>${esc(x.clearance.date)}</td><td>${esc(x.clearance.reason)}</td><td>${esc(x.clearance.lastDuty)}</td><td><span class="pill">${esc(x.clearance.status)}</span></td></tr>`).join('')}</tbody></table></div>`}
-function saveClearance(){let chosen=val('clearEmployee');let emp=db.employees.find(x=>chosen.startsWith(x.tracking));if(!emp){alert('Select a valid employee.');return}let sign=[];for(let i=0;i<7;i++){let canvas=$('sigCanvas'+i),old=emp.clearance?.sign?.[i]||{},image=signatureData('sigCanvas'+i),signedAt=image?(canvas.dataset.signedAt||new Date().toISOString()):'';sign.push({status:val('sig'+i),name:val('sigPrintedName'+i),signature:image,signatureData:image,signedAt,remarks:val('sigRemark'+i)})}let statuses=sign.map(x=>x.status);let status=statuses.every(x=>x==='Cleared'||x==='Not Applicable')?'Cleared':statuses.some(x=>x==='With Pending Accountability')?'With Pending Accountability':'In Progress';let returned=[];document.querySelectorAll('.returnedItem').forEach((e,i)=>{if(e.checked)returned.push({item:e.value,qty:val('retQty'+i),condition:val('retCond'+i)})});let receiverImage=signatureData('receiverCanvas'),receiverCanvas=$('receiverCanvas');emp.clearance={date:val('clearDate'),name:val('clearName'),area:val('clearArea'),dateHired:val('dateHired'),lastDuty:val('lastDuty'),reason:val('clearReason'),other:val('clearOther'),returned,receivedBy:val('receivedBy'),receiverSignature:receiverImage,receiverSignatureData:receiverImage,receiverSignedAt:receiverImage?(receiverCanvas.dataset.signedAt||new Date().toISOString()):'',sign,status};emp.separationDate=val('lastDuty');emp.separationReason=val('clearReason');emp.clearanceStatus=status;emp.employmentStatus='Separated';save();alert('Clearance record saved with actual signature images and signing timestamps.');renderD()}
+function saveClearance(){let chosen=val('clearEmployee');let emp=db.employees.find(x=>chosen.startsWith(x.tracking));if(!emp){alert('Select a valid employee.');return}let sign=[];for(let i=0;i<7;i++){let canvas=$('sigCanvas'+i),old=emp.clearance?.sign?.[i]||{},image=signatureData('sigCanvas'+i),signedAt=image?(canvas.dataset.signedAt||new Date().toISOString()):'';sign.push({status:val('sig'+i),name:val('sigPrintedName'+i),signature:image,signatureData:image,signedAt,remarks:val('sigRemark'+i)})}let statuses=sign.map(x=>x.status);let status=statuses.every(x=>x==='Cleared'||x==='Not Applicable')?'Cleared':statuses.some(x=>x==='With Pending Accountability')?'With Pending Accountability':'In Progress';let returned=[];document.querySelectorAll('.returnedItem').forEach((e,i)=>{if(e.checked)returned.push({item:e.value,qty:val('retQty'+i),condition:val('retCond'+i)})});let receiverImage=signatureData('receiverCanvas'),receiverCanvas=$('receiverCanvas');emp.clearance={date:val('clearDate'),name:val('clearName'),area:val('clearArea'),dateHired:val('dateHired'),lastDuty:val('lastDuty'),reason:val('clearReason'),other:val('clearOther'),returned,receivedBy:val('receivedBy'),receiverSignature:receiverImage,receiverSignatureData:receiverImage,receiverSignedAt:receiverImage?(receiverCanvas.dataset.signedAt||new Date().toISOString()):'',sign,status};emp.separationDate=val('lastDuty');emp.separationReason=val('clearReason');emp.clearanceStatus=status;emp.employmentStatus='Separated';save();apiSaveEmployee(emp);alert('Clearance record saved with actual signature images and signing timestamps.');renderD()}
 
 function renderE(){let all=visibleEmployees(), count=s=>all.filter(x=>(x.employmentStatus||'Applicant')===s).length;let apps=all.length, approvals=all.filter(x=>x.applicationStatus==='Approved').length, req=all.filter(x=>x.verification==='Verified').length, orient=all.filter(x=>x.orientationCompletion==='Completed').length, active=count('Active'), separated=count('Separated');$('content').innerHTML=`<div class="cards">${[['Total Applicants',apps],['Approved',approvals],['Requirements Verified',req],['Orientation Completed',orient],['For Onboarding',count('For Onboarding')],['Active Employees',active],['Separated',separated],['Accountable Items',visibleItems().length]].map(([n,v])=>`<div class="stat"><small>${n}</small><strong>${v}</strong></div>`).join('')}</div><div class="panel"><h2>Employee Application Status</h2><p class="sub">Overview of records by current employment status.</p>${dashboardTable()}</div><div class="panel"><h2>Monitoring Overview</h2><div class="grid three">${[['Application Monitoring',all.filter(x=>x.applicationDate).length],['Approval Monitoring',all.filter(x=>x.applicationStatus).length],['Requirements Monitoring',all.filter(x=>x.verification).length],['Orientation Monitoring',all.filter(x=>x.orientationDate).length],['Onboarding Monitoring',all.filter(x=>x.startDate).length],['Active Monitoring',active],['Separated Monitoring',separated]].map(([n,v])=>`<div class="stat"><small>${n}</small><strong>${v}</strong></div>`).join('')}</div></div>`}
 function dashboardTable(){let employees=visibleEmployees();if(!employees.length)return '<div class="empty">No records to monitor.</div>';return `<div class="table-wrap"><table><thead><tr><th>Tracking No.</th><th>Employee</th><th>Agency</th><th>Department</th><th>Application</th><th>Requirements</th><th>Employment</th></tr></thead><tbody>${employees.map(x=>`<tr><td>${esc(x.tracking)}</td><td>${esc([x.firstName,x.middleName,x.surname].filter(Boolean).join(' ')||'—')}</td><td>${esc(x.agency)}</td><td>${esc(x.department||x.onboardDepartment)}</td><td>${esc(x.applicationStatus||'Pending')}</td><td>${esc(x.verification||'Pending')}</td><td>${esc(x.employmentStatus||'Applicant')}</td></tr>`).join('')}</tbody></table></div>`}
@@ -608,7 +715,7 @@ function deleteRecord(id){
    alert('Access restricted: Only System Administrator and MHC HR can delete employee records.');
    return;
  }
- if(confirm('Delete this employee record? This cannot be undone.')){db.employees=db.employees.filter(x=>x.id!==id);save();renderA()}
+ if(confirm('Delete this employee record? This cannot be undone.')){db.employees=db.employees.filter(x=>x.id!==id);save();apiDeleteEmployee(id);renderA()}
 }
 function clearForm(){editingId=null;renderA()}
 function newRecord(){editingId=null;currentBId=null;setPage('A')}
@@ -763,12 +870,15 @@ function clearAllRecords(){
  if(!confirm('Delete ALL records?\n\n'+n+' employee record(s) and '+m+' accountable item issuance(s) will be permanently removed. This cannot be undone.'))return;
  if(!confirm('Final confirmation: clear everything now?'))return;
  db={employees:[],items:[]};localStorage.removeItem(KEY);
+ apiClearAll();
  editingId=null;currentBId=null;masterTab='All';masterQ='';masterAgency='';
  render();alert('All records have been cleared.');
 }
 /* TEMP-REMOVE-END */
 // Check user authentication session on start
 checkAuth();
+syncWithServer();
+setInterval(syncWithServer, 5000);
 </script>
 </body>
 </html>
