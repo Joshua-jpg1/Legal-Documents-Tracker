@@ -1,10 +1,10 @@
 services:
   - type: web
-    name: mhc-employee-management-system
+    name: legal-documents-tracker
     runtime: node
     plan: free
     buildCommand: npm install
-    startCommand: npm start
+    startCommand: node server.js
     envVars:
       - key: NODE_ENV
         value: production
