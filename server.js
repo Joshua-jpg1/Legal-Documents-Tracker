@@ -33,7 +33,7 @@ function loadLocalData() {
       console.error('Error reading db.json, initializing empty store', e);
     }
   }
-  return { employees: [], items: [] };
+  return { records: [], employees: [], items: [] };
 }
 
 function saveLocalData(data) {
@@ -68,6 +68,12 @@ if (DATABASE_URL) {
 async function initPostgres() {
   try {
     await pool.query(`
+      CREATE TABLE IF NOT EXISTS legal_records (
+        id VARCHAR(255) PRIMARY KEY,
+        data JSONB NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      );
       CREATE TABLE IF NOT EXISTS ems_employees (
         id VARCHAR(255) PRIMARY KEY,
         tracking VARCHAR(255),
@@ -111,11 +117,113 @@ app.get('/api/status', async (req, res) => {
     }
     res.json({
       ok: true,
-      service: 'May Harvest Corporation - EMS Backend',
+      service: 'May Harvest Corporation - Legal Requirements & EMS Backend',
       storage: usePostgres ? 'Render PostgreSQL' : 'Render File Storage',
       counts: { employees: empCount, items: itemCount },
       timestamp: new Date().toISOString()
     });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ================= LEGAL REQUIREMENTS TRACKER ENDPOINTS =================
+
+// GET all legal records
+app.get('/api/records', async (req, res) => {
+  try {
+    if (usePostgres) {
+      const result = await pool.query('SELECT data FROM legal_records ORDER BY updated_at DESC');
+      const records = result.rows.map(r => r.data);
+      return res.json({ ok: true, records });
+    }
+    res.json({ ok: true, records: inMemoryDb.records || [] });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// POST single legal record (upsert)
+app.post('/api/records', async (req, res) => {
+  try {
+    const record = req.body;
+    if (!record || !record.id) {
+      return res.status(400).json({ ok: false, error: 'Record object with id is required.' });
+    }
+    const now = new Date().toISOString();
+    record.updatedAt = now;
+
+    if (usePostgres) {
+      await pool.query(
+        `INSERT INTO legal_records (id, data, updated_at)
+         VALUES ($1, $2, NOW())
+         ON CONFLICT (id) DO UPDATE SET
+           data = EXCLUDED.data,
+           updated_at = NOW()`,
+        [record.id, JSON.stringify(record)]
+      );
+    } else {
+      inMemoryDb.records = inMemoryDb.records || [];
+      const idx = inMemoryDb.records.findIndex(x => x.id === record.id);
+      if (idx >= 0) {
+        inMemoryDb.records[idx] = record;
+      } else {
+        inMemoryDb.records.push(record);
+      }
+      saveLocalData(inMemoryDb);
+    }
+    res.json({ ok: true, record });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// DELETE single legal record
+app.delete('/api/records/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (usePostgres) {
+      await pool.query('DELETE FROM legal_records WHERE id = $1', [id]);
+    } else {
+      inMemoryDb.records = (inMemoryDb.records || []).filter(x => x.id !== id);
+      saveLocalData(inMemoryDb);
+    }
+    res.json({ ok: true, deletedId: id });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// POST sync legal records
+app.post('/api/sync-records', async (req, res) => {
+  try {
+    const clientRecords = Array.isArray(req.body.records) ? req.body.records : [];
+    if (usePostgres) {
+      for (const rec of clientRecords) {
+        if (rec && rec.id) {
+          await pool.query(
+            `INSERT INTO legal_records (id, data, updated_at)
+             VALUES ($1, $2, NOW())
+             ON CONFLICT (id) DO UPDATE SET
+               data = EXCLUDED.data,
+               updated_at = NOW()`,
+            [rec.id, JSON.stringify(rec)]
+          );
+        }
+      }
+      const result = await pool.query('SELECT data FROM legal_records ORDER BY updated_at DESC');
+      const allRecords = result.rows.map(r => r.data);
+      return res.json({ ok: true, records: allRecords });
+    } else {
+      inMemoryDb.records = inMemoryDb.records || [];
+      const map = new Map((inMemoryDb.records || []).map(x => [x.id, x]));
+      for (const rec of clientRecords) {
+        if (rec && rec.id) map.set(rec.id, rec);
+      }
+      inMemoryDb.records = Array.from(map.values());
+      saveLocalData(inMemoryDb);
+      return res.json({ ok: true, records: inMemoryDb.records });
+    }
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }
