@@ -54,6 +54,9 @@ if (DATABASE_URL) {
         ? { rejectUnauthorized: false } 
         : false
     });
+    pool.on('error', (err) => {
+      console.error('Unexpected error on idle PostgreSQL client:', err);
+    });
     usePostgres = true;
     console.log('PostgreSQL DATABASE_URL detected. Initializing database tables...');
     initPostgres();

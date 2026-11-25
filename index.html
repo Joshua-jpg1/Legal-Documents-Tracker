@@ -132,6 +132,32 @@ const save = (sync = true) => {
   if (sync) syncToServer();
 };
 
+async function saveRecordToServer(item) {
+  localStorage.setItem(KEY, JSON.stringify(records));
+  try {
+    const res = await fetch('/api/records', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(item)
+    });
+    const data = await res.json();
+    if (data.ok) {
+      updateSyncStatus(true);
+    }
+  } catch (e) {
+    updateSyncStatus(false);
+  }
+}
+
+async function deleteRecordFromServer(id) {
+  try {
+    await fetch('/api/records/' + encodeURIComponent(id), { method: 'DELETE' });
+    updateSyncStatus(true);
+  } catch (e) {
+    updateSyncStatus(false);
+  }
+}
+
 async function syncToServer() {
   try {
     const res = await fetch('/api/sync-records', {
@@ -140,10 +166,10 @@ async function syncToServer() {
       body: JSON.stringify({ records })
     });
     const data = await res.json();
-    if (data.ok && Array.isArray(data.records) && data.records.length > 0) {
+    if (data.ok && Array.isArray(data.records)) {
       records = data.records;
       localStorage.setItem(KEY, JSON.stringify(records));
-      render();
+      if (!editingRowId) render();
     }
     updateSyncStatus(true);
   } catch (e) {
@@ -156,12 +182,19 @@ async function loadFromServer() {
     const res = await fetch('/api/records');
     const data = await res.json();
     if (data.ok && Array.isArray(data.records)) {
-      if (data.records.length > 0) {
-        records = data.records;
-        localStorage.setItem(KEY, JSON.stringify(records));
-        render();
-      } else if (records.length > 0) {
-        syncToServer();
+      if (data.records.length === 0 && records.length > 0) {
+        // Upload existing local records to database if database is empty
+        await syncToServer();
+      } else {
+        const incoming = JSON.stringify(data.records);
+        const current = JSON.stringify(records);
+        if (incoming !== current) {
+          records = data.records;
+          localStorage.setItem(KEY, incoming);
+          if (!editingRowId) {
+            render();
+          }
+        }
       }
       updateSyncStatus(true);
     }
@@ -172,13 +205,27 @@ async function loadFromServer() {
 
 function updateSyncStatus(isOnline) {
   const el = $('syncIndicator');
-  if (!el) return;
+  const badge = $('headerSyncBadge');
   if (isOnline) {
-    el.innerHTML = '<span style="color:#15803d">●</span> Cloud Synced (Multi-PC Live)';
-    el.title = 'Changes automatically saved to cloud server & synced across all devices';
+    if (el) {
+      el.innerHTML = '<span style="color:#15803d">●</span> Cloud Database Connected (Multi-PC Live Sync Active)';
+      el.title = 'Saved in Render PostgreSQL Database. Visible across all computers & devices instantly.';
+    }
+    if (badge) {
+      badge.innerHTML = '<span style="color:#15803d">●</span> Cloud Database Connected';
+      badge.style.background = '#dcfce7';
+      badge.style.color = '#166534';
+    }
   } else {
-    el.innerHTML = '<span style="color:#b45309">●</span> Local Storage (Offline Mode)';
-    el.title = 'Saved locally in this browser';
+    if (el) {
+      el.innerHTML = '<span style="color:#b45309">●</span> Local Storage (Offline Mode)';
+      el.title = 'Saved locally in this browser';
+    }
+    if (badge) {
+      badge.innerHTML = '<span style="color:#b45309">●</span> Local Mode (Offline)';
+      badge.style.background = '#fef3c7';
+      badge.style.color = '#92400e';
+    }
   }
 }
 const esc = s => String(s ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -251,9 +298,9 @@ function clearForm(){
 $('reqForm').addEventListener('submit',e=>{
   e.preventDefault();
   const id=$('editId').value||String(Date.now());
-  const item={id,name:$('name').value.trim(),authority:$('authority').value.trim(),refno:$('refno').value.trim(),issue:$('issue').value,expiry:$('expiry').value,remind:$('remind').value,statusMode:'auto',remarks:$('remarks').value.trim()};
+  const item={id,name:$('name').value.trim(),authority:$('authority').value.trim(),refno:$('refno').value.trim(),issue:$('issue').value,expiry:$('expiry').value,remind:$('remind').value,statusMode:'auto',remarks:$('remarks').value.trim(),updatedAt:new Date().toISOString()};
   const i=records.findIndex(r=>r.id===id); if(i>=0) records[i]=item; else records.push(item);
-  save(); clearForm(); render(); checkNotifications();
+  saveRecordToServer(item); clearForm(); render(); checkNotifications();
 });
 window.startRowEdit=id=>{ editingRowId=id; render(); };
 window.cancelRowEdit=()=>{ editingRowId=null; render(); };
@@ -265,7 +312,8 @@ window.saveRowEdit=id=>{
   r.expiry=expiryInput.value;
   r.statusMode=statusInput.value;
   const remarksInput=$('rowRemarks_'+id); if(remarksInput) r.remarks=remarksInput.value.trim();
-  save(); editingRowId=null; render(); checkNotifications();
+  r.updatedAt=new Date().toISOString();
+  saveRecordToServer(r); editingRowId=null; render(); checkNotifications();
 };
 window.editRecord=id=>{
   const r=records.find(x=>x.id===id); if(!r)return;
@@ -277,8 +325,8 @@ window.deleteRecord=id=>{
   const r=records.find(x=>x.id===id); if(!r)return;
   if(confirm(`Delete "${r.name}"?`)){
     records=records.filter(x=>x.id!==id);
-    save(false);
-    fetch('/api/records/'+encodeURIComponent(id), { method: 'DELETE' }).catch(()=>{});
+    localStorage.setItem(KEY, JSON.stringify(records));
+    deleteRecordFromServer(id);
     render();
   }
 };
@@ -326,7 +374,7 @@ document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
 });
 render(); checkNotifications();
 loadFromServer();
-setInterval(loadFromServer, 10000);
+setInterval(loadFromServer, 4000);
 window.addEventListener('focus', loadFromServer);
 </script>
 </body>
