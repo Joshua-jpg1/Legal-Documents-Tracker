@@ -54,7 +54,83 @@ footer{color:var(--muted);font-size:12px;text-align:center;padding:15px}
   <div class="brand"><small>May Harvest Corporation</small>
   <h1>Legal Requirements & Expiration Tracker</h1>
   <p>Central list of permits, certificates, licenses, and other compliance documents</p></div>
+  <div id="userHeaderBox" style="display:none;align-items:center;gap:12px;margin-left:auto;padding:8px 14px;background:#ffffffd4;border-radius:10px;border:1px solid #7cc79a;box-shadow:0 1px 4px #0000000d">
+    <div style="text-align:right">
+      <div id="authUserName" style="font-weight:700;font-size:14px;color:#14532d">Plant User</div>
+      <div id="authUserRole" style="font-size:11px;color:#2e6f4a;text-transform:uppercase;letter-spacing:.05em">Authorized Staff</div>
+    </div>
+    <button type="button" onclick="openChangePasswordModal()" style="background:#e3f1e8;color:#14532d;padding:6px 10px;font-size:12px;border:1px solid #a9dcc0" title="Change Password">🔑 Password</button>
+    <button type="button" onclick="logoutUser()" class="danger" style="padding:6px 10px;font-size:12px" title="Sign Out">Sign Out</button>
+  </div>
 </header>
+
+<!-- PRIVATE PLANT LOGIN OVERLAY -->
+<div id="loginOverlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,35,23,0.94);backdrop-filter:blur(8px);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;">
+  <div style="background:#ffffff;border-radius:16px;max-width:440px;width:100%;box-shadow:0 20px 40px rgba(0,0,0,0.35);border:2px solid #7cc79a;overflow:hidden;">
+    <div style="background:linear-gradient(135deg, #14532d, #2e8b57);padding:24px 22px;text-align:center;color:white;">
+      <div style="font-size:36px;margin-bottom:8px">🔒</div>
+      <h2 style="margin:0 0 6px;font-size:20px;letter-spacing:0.02em;color:#ffffff">May Harvest Corporation</h2>
+      <div style="font-size:13px;color:#d8f0e1;font-weight:600">Legal Documents & Expiration Tracker</div>
+      <div style="margin-top:10px;display:inline-block;background:#ffffff22;border:1px solid #ffffff44;border-radius:20px;padding:3px 12px;font-size:11px;letter-spacing:0.05em;text-transform:uppercase">
+        Confidential · Authorized Plant Access
+      </div>
+    </div>
+    <div style="padding:26px 22px;">
+      <div id="loginAlert" style="display:none;background:#fee2e2;border-left:4px solid #ef4444;color:#991b1b;padding:10px 12px;border-radius:6px;font-size:13px;margin-bottom:16px;"></div>
+      <form id="loginForm" onsubmit="handleLoginSubmit(event)">
+        <div style="margin-bottom:16px;">
+          <label style="display:block;font-size:13px;font-weight:700;color:#334155;margin-bottom:6px">Plant Username</label>
+          <input type="text" id="loginUsername" required autocomplete="username" placeholder="Username (e.g. admin or plant_staff)" style="width:100%;padding:11px;border-radius:8px;border:1px solid #cbd5e1;font-size:14px;box-sizing:border-box;">
+        </div>
+        <div style="margin-bottom:20px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <label style="font-size:13px;font-weight:700;color:#334155">Password</label>
+            <button type="button" onclick="togglePasswordVisibility('loginPassword', this)" style="background:none;border:none;color:#2e8b57;font-size:12px;padding:0;cursor:pointer;font-weight:600">Show</button>
+          </div>
+          <input type="password" id="loginPassword" required autocomplete="current-password" placeholder="Enter password" style="width:100%;padding:11px;border-radius:8px;border:1px solid #cbd5e1;font-size:14px;box-sizing:border-box;">
+        </div>
+        <button type="submit" id="loginBtn" style="width:100%;padding:13px;background:#14532d;color:white;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 4px 12px #14532d33">Sign In to Plant Portal</button>
+      </form>
+      <div style="margin-top:18px;padding:12px;background:#f0fdf4;border-radius:8px;border:1px solid #bbf7d0;font-size:12px;color:#166534;line-height:1.5">
+        <strong>Default Plant Credentials:</strong><br>
+        • Admin: <code>admin</code> / <code>MayHarvest2026!</code><br>
+        • Staff: <code>plant_staff</code> / <code>MayHarvest2026!</code><br>
+        <span style="color:#64748b;font-size:11px;display:block;margin-top:4px">Maaari pong palitan ang inyong password sa loob para sa seguridad.</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CHANGE PASSWORD MODAL -->
+<div id="changePasswordModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);z-index:99998;align-items:center;justify-content:center;padding:16px;">
+  <div style="background:#ffffff;border-radius:14px;max-width:400px;width:100%;box-shadow:0 15px 30px rgba(0,0,0,0.25);border:1px solid #7cc79a;overflow:hidden;">
+    <div style="background:#14532d;color:white;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;">
+      <h3 style="margin:0;font-size:17px">Change Plant Password</h3>
+      <button type="button" onclick="closeChangePasswordModal()" style="background:none;border:none;color:white;font-size:20px;cursor:pointer;padding:0;line-height:1">×</button>
+    </div>
+    <div style="padding:20px;">
+      <div id="pwdAlert" style="display:none;padding:10px 12px;border-radius:6px;font-size:13px;margin-bottom:14px;"></div>
+      <form id="changePasswordForm" onsubmit="handleChangePasswordSubmit(event)">
+        <div style="margin-bottom:12px;">
+          <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px">Current Password</label>
+          <input type="password" id="currentPassword" required style="width:100%;padding:9px;border:1px solid #cbd5e1;border-radius:6px;box-sizing:border-box">
+        </div>
+        <div style="margin-bottom:12px;">
+          <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px">New Password (min 6 chars)</label>
+          <input type="password" id="newPassword" required minlength="6" style="width:100%;padding:9px;border:1px solid #cbd5e1;border-radius:6px;box-sizing:border-box">
+        </div>
+        <div style="margin-bottom:16px;">
+          <label style="display:block;font-size:13px;font-weight:600;margin-bottom:4px">Confirm New Password</label>
+          <input type="password" id="confirmNewPassword" required minlength="6" style="width:100%;padding:9px;border:1px solid #cbd5e1;border-radius:6px;box-sizing:border-box">
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+          <button type="button" class="secondary" onclick="closeChangePasswordModal()">Cancel</button>
+          <button type="submit" id="savePwdBtn">Update Password</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 <main>
   <section class="cards">
     <div class="card"><small>Total requirements</small><div class="metric" id="total">0</div></div>
@@ -132,14 +208,252 @@ const save = (sync = true) => {
   if (sync) syncToServer();
 };
 
+let currentUser = null;
+let syncTimer = null;
+
+function getAuthToken() {
+  return localStorage.getItem('mhc_auth_token') || '';
+}
+
+function getAuthHeaders() {
+  const token = getAuthToken();
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  return headers;
+}
+
+function handleUnauthorized(msg) {
+  localStorage.removeItem('mhc_auth_token');
+  localStorage.removeItem('mhc_user');
+  currentUser = null;
+  if (syncTimer) {
+    clearInterval(syncTimer);
+    syncTimer = null;
+  }
+  showLoginOverlay(msg || 'Authentication required. Please log in.');
+  updateSyncStatus(false);
+}
+
+function showLoginOverlay(errorMsg) {
+  const overlay = $('loginOverlay');
+  const alertEl = $('loginAlert');
+  if (overlay) overlay.style.display = 'flex';
+  if (alertEl) {
+    if (errorMsg) {
+      alertEl.textContent = errorMsg;
+      alertEl.style.display = 'block';
+    } else {
+      alertEl.style.display = 'none';
+    }
+  }
+  const userBox = $('userHeaderBox');
+  if (userBox) userBox.style.display = 'none';
+}
+
+function hideLoginOverlay() {
+  const overlay = $('loginOverlay');
+  if (overlay) overlay.style.display = 'none';
+}
+
+function showUserHeader(user) {
+  const userBox = $('userHeaderBox');
+  const nameEl = $('authUserName');
+  const roleEl = $('authUserRole');
+  if (userBox && nameEl && roleEl) {
+    nameEl.textContent = user.name || user.username;
+    roleEl.textContent = (user.role === 'admin' ? '🛡️ Plant Administrator' : '📋 Plant Compliance Officer');
+    userBox.style.display = 'inline-flex';
+  }
+}
+
+async function checkAuthStatus() {
+  const token = getAuthToken();
+  if (!token) {
+    showLoginOverlay();
+    return;
+  }
+  try {
+    const res = await fetch('/api/auth/me', { headers: getAuthHeaders() });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.ok && data.user) {
+        currentUser = data.user;
+        hideLoginOverlay();
+        showUserHeader(currentUser);
+        render();
+        await loadFromServer();
+        if (!syncTimer) syncTimer = setInterval(loadFromServer, 4000);
+        return;
+      }
+    }
+    handleUnauthorized('Session expired. Please sign in again.');
+  } catch (e) {
+    const cachedUser = localStorage.getItem('mhc_user');
+    if (cachedUser) {
+      try {
+        currentUser = JSON.parse(cachedUser);
+        hideLoginOverlay();
+        showUserHeader(currentUser);
+        render();
+      } catch (err) {
+        showLoginOverlay();
+      }
+    } else {
+      showLoginOverlay();
+    }
+  }
+}
+
+async function handleLoginSubmit(e) {
+  e.preventDefault();
+  const usernameInput = $('loginUsername');
+  const passwordInput = $('loginPassword');
+  const btn = $('loginBtn');
+  const alertEl = $('loginAlert');
+
+  const username = usernameInput.value.trim();
+  const password = passwordInput.value;
+
+  btn.disabled = true;
+  btn.textContent = 'Verifying credentials...';
+  alertEl.style.display = 'none';
+
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+    if (data.ok && data.token) {
+      localStorage.setItem('mhc_auth_token', data.token);
+      localStorage.setItem('mhc_user', JSON.stringify(data.user));
+      currentUser = data.user;
+      hideLoginOverlay();
+      showUserHeader(currentUser);
+      passwordInput.value = '';
+      render();
+      await loadFromServer();
+      if (!syncTimer) syncTimer = setInterval(loadFromServer, 4000);
+    } else {
+      alertEl.textContent = data.error || 'Invalid plant username or password.';
+      alertEl.style.display = 'block';
+    }
+  } catch (err) {
+    alertEl.textContent = 'Network error: ' + err.message;
+    alertEl.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Sign In to Plant Portal';
+  }
+}
+
+async function logoutUser() {
+  if (!confirm('Sigurado ka bang nais mong mag-sign out mula sa Plant Legal Portal?')) return;
+  try {
+    await fetch('/api/auth/logout', {
+      method: 'POST',
+      headers: getAuthHeaders()
+    });
+  } catch (e) {}
+  localStorage.removeItem('mhc_auth_token');
+  localStorage.removeItem('mhc_user');
+  currentUser = null;
+  if (syncTimer) {
+    clearInterval(syncTimer);
+    syncTimer = null;
+  }
+  showLoginOverlay('Signed out successfully.');
+}
+
+function togglePasswordVisibility(inputId, btn) {
+  const input = $(inputId);
+  if (!input) return;
+  if (input.type === 'password') {
+    input.type = 'text';
+    btn.textContent = 'Hide';
+  } else {
+    input.type = 'password';
+    btn.textContent = 'Show';
+  }
+}
+
+function openChangePasswordModal() {
+  const modal = $('changePasswordModal');
+  const alertEl = $('pwdAlert');
+  if (modal) modal.style.display = 'flex';
+  if (alertEl) alertEl.style.display = 'none';
+  $('changePasswordForm').reset();
+}
+
+function closeChangePasswordModal() {
+  const modal = $('changePasswordModal');
+  if (modal) modal.style.display = 'none';
+}
+
+async function handleChangePasswordSubmit(e) {
+  e.preventDefault();
+  const currentPassword = $('currentPassword').value;
+  const newPassword = $('newPassword').value;
+  const confirmNewPassword = $('confirmNewPassword').value;
+  const alertEl = $('pwdAlert');
+  const btn = $('savePwdBtn');
+
+  if (newPassword !== confirmNewPassword) {
+    alertEl.textContent = 'New passwords do not match.';
+    alertEl.style.background = '#fee2e2';
+    alertEl.style.color = '#991b1b';
+    alertEl.style.display = 'block';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Updating...';
+
+  try {
+    const res = await fetch('/api/auth/change-password', {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ currentPassword, newPassword })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      alertEl.textContent = 'Plant password updated successfully!';
+      alertEl.style.background = '#dcfce7';
+      alertEl.style.color = '#166534';
+      alertEl.style.display = 'block';
+      setTimeout(() => {
+        closeChangePasswordModal();
+      }, 1500);
+    } else {
+      alertEl.textContent = data.error || 'Failed to update password.';
+      alertEl.style.background = '#fee2e2';
+      alertEl.style.color = '#991b1b';
+      alertEl.style.display = 'block';
+    }
+  } catch (err) {
+    alertEl.textContent = 'Error: ' + err.message;
+    alertEl.style.background = '#fee2e2';
+    alertEl.style.color = '#991b1b';
+    alertEl.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Update Password';
+  }
+}
+
 async function saveRecordToServer(item) {
   localStorage.setItem(KEY, JSON.stringify(records));
   try {
     const res = await fetch('/api/records', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(item)
     });
+    if (res.status === 401) {
+      handleUnauthorized();
+      return;
+    }
     const data = await res.json();
     if (data.ok) {
       updateSyncStatus(true);
@@ -151,7 +465,14 @@ async function saveRecordToServer(item) {
 
 async function deleteRecordFromServer(id) {
   try {
-    await fetch('/api/records/' + encodeURIComponent(id), { method: 'DELETE' });
+    const res = await fetch('/api/records/' + encodeURIComponent(id), {
+      method: 'DELETE',
+      headers: getAuthHeaders()
+    });
+    if (res.status === 401) {
+      handleUnauthorized();
+      return;
+    }
     updateSyncStatus(true);
   } catch (e) {
     updateSyncStatus(false);
@@ -162,9 +483,13 @@ async function syncToServer() {
   try {
     const res = await fetch('/api/sync-records', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify({ records })
     });
+    if (res.status === 401) {
+      handleUnauthorized();
+      return;
+    }
     const data = await res.json();
     if (data.ok && Array.isArray(data.records)) {
       records = data.records;
@@ -178,12 +503,18 @@ async function syncToServer() {
 }
 
 async function loadFromServer() {
+  if (!getAuthToken()) return;
   try {
-    const res = await fetch('/api/records');
+    const res = await fetch('/api/records', {
+      headers: getAuthHeaders()
+    });
+    if (res.status === 401) {
+      handleUnauthorized('Session expired. Please sign in again.');
+      return;
+    }
     const data = await res.json();
     if (data.ok && Array.isArray(data.records)) {
       if (data.records.length === 0 && records.length > 0) {
-        // Upload existing local records to database if database is empty
         await syncToServer();
       } else {
         const incoming = JSON.stringify(data.records);
@@ -209,7 +540,7 @@ function updateSyncStatus(isOnline) {
   if (isOnline) {
     if (el) {
       el.innerHTML = '<span style="color:#15803d">●</span> Cloud Database Connected (Multi-PC Live Sync Active)';
-      el.title = 'Saved in Render PostgreSQL Database. Visible across all computers & devices instantly.';
+      el.title = 'Saved in Supabase PostgreSQL Database. Visible across all computers & devices instantly.';
     }
     if (badge) {
       badge.innerHTML = '<span style="color:#15803d">●</span> Cloud Database Connected';
@@ -372,10 +703,11 @@ document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
   document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x===t));
   document.querySelectorAll('.tabpane').forEach(p=>p.hidden=p.id!==t.dataset.tab);
 });
-render(); checkNotifications();
-loadFromServer();
-setInterval(loadFromServer, 4000);
-window.addEventListener('focus', loadFromServer);
+checkAuthStatus();
+checkNotifications();
+window.addEventListener('focus', () => {
+  if (getAuthToken()) loadFromServer();
+});
 </script>
 </body>
 </html>

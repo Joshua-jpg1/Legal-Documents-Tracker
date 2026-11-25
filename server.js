@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const { Pool } = require('pg');
 
 const app = express();
@@ -16,6 +17,28 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 const DATABASE_URL = process.env.DATABASE_URL;
 let pool = null;
 let usePostgres = false;
+const inMemorySessions = new Map();
+
+function hashPassword(password) {
+  return crypto.createHash('sha256').update(password + '_mhc_salt_2026').digest('hex');
+}
+
+const DEFAULT_USERS = [
+  {
+    id: 'user_admin',
+    username: 'admin',
+    password_hash: hashPassword('MayHarvest2026!'),
+    name: 'Plant Manager / Administrator',
+    role: 'admin'
+  },
+  {
+    id: 'user_compliance',
+    username: 'plant_staff',
+    password_hash: hashPassword('MayHarvest2026!'),
+    name: 'Plant QA / Compliance Officer',
+    role: 'staff'
+  }
+];
 
 const DATA_DIR = path.join(__dirname, 'data');
 const JSON_FILE = path.join(DATA_DIR, 'db.json');
@@ -28,12 +51,16 @@ if (!fs.existsSync(DATA_DIR)) {
 function loadLocalData() {
   if (fs.existsSync(JSON_FILE)) {
     try {
-      return JSON.parse(fs.readFileSync(JSON_FILE, 'utf8'));
+      const data = JSON.parse(fs.readFileSync(JSON_FILE, 'utf8'));
+      if (!data.users || data.users.length === 0) {
+        data.users = DEFAULT_USERS;
+      }
+      return data;
     } catch (e) {
       console.error('Error reading db.json, initializing empty store', e);
     }
   }
-  return { records: [], employees: [], items: [] };
+  return { records: [], users: DEFAULT_USERS, employees: [], items: [] };
 }
 
 function saveLocalData(data) {
@@ -77,6 +104,22 @@ async function initPostgres() {
         created_at TIMESTAMPTZ DEFAULT NOW(),
         updated_at TIMESTAMPTZ DEFAULT NOW()
       );
+      CREATE TABLE IF NOT EXISTS legal_users (
+        id VARCHAR(255) PRIMARY KEY,
+        username VARCHAR(255) UNIQUE NOT NULL,
+        password_hash VARCHAR(255) NOT NULL,
+        name VARCHAR(255),
+        role VARCHAR(50) DEFAULT 'admin',
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE TABLE IF NOT EXISTS legal_sessions (
+        token VARCHAR(255) PRIMARY KEY,
+        user_id VARCHAR(255) NOT NULL,
+        username VARCHAR(255) NOT NULL,
+        role VARCHAR(50),
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        expires_at TIMESTAMPTZ NOT NULL
+      );
       CREATE TABLE IF NOT EXISTS ems_employees (
         id VARCHAR(255) PRIMARY KEY,
         tracking VARCHAR(255),
@@ -95,12 +138,193 @@ async function initPostgres() {
       CREATE INDEX IF NOT EXISTS idx_ems_emp_agency ON ems_employees(agency);
       CREATE INDEX IF NOT EXISTS idx_ems_emp_tracking ON ems_employees(tracking);
     `);
-    console.log('PostgreSQL tables initialized successfully.');
+
+    // Seed default users if not yet present
+    for (const u of DEFAULT_USERS) {
+      await pool.query(
+        `INSERT INTO legal_users (id, username, password_hash, name, role)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (username) DO NOTHING`,
+        [u.id, u.username, u.password_hash, u.name, u.role]
+      );
+    }
+    console.log('PostgreSQL tables & default users initialized successfully.');
   } catch (err) {
     console.error('Error creating PostgreSQL tables:', err);
     usePostgres = false;
   }
 }
+
+// Session verification helper
+async function getSessionFromRequest(req) {
+  const authHeader = req.headers['authorization'] || '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : req.query.token;
+  if (!token) return null;
+
+  if (usePostgres) {
+    try {
+      const res = await pool.query(
+        'SELECT token, user_id, username, role FROM legal_sessions WHERE token = $1 AND expires_at > NOW()',
+        [token]
+      );
+      if (res.rows.length > 0) return res.rows[0];
+    } catch (e) {
+      console.error('Session verify error:', e);
+    }
+  } else {
+    const s = inMemorySessions.get(token);
+    if (s && s.expiresAt > Date.now()) return s;
+  }
+  return null;
+}
+
+// Require Auth Middleware
+async function requireAuth(req, res, next) {
+  const session = await getSessionFromRequest(req);
+  if (!session) {
+    return res.status(401).json({ ok: false, error: 'Unauthorized: Plant credentials required.' });
+  }
+  req.user = session;
+  next();
+}
+
+// ================= AUTHENTICATION ENDPOINTS =================
+
+// Login
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ ok: false, error: 'Username and password are required.' });
+    }
+    const cleanUser = username.trim().toLowerCase();
+    const hash = hashPassword(password);
+    let matchedUser = null;
+
+    if (usePostgres) {
+      const result = await pool.query(
+        'SELECT * FROM legal_users WHERE LOWER(username) = $1',
+        [cleanUser]
+      );
+      if (result.rows.length > 0 && result.rows[0].password_hash === hash) {
+        matchedUser = result.rows[0];
+      }
+    } else {
+      const users = inMemoryDb.users || DEFAULT_USERS;
+      matchedUser = users.find(u => u.username.toLowerCase() === cleanUser && u.password_hash === hash);
+    }
+
+    if (!matchedUser) {
+      return res.status(401).json({ ok: false, error: 'Invalid username or password.' });
+    }
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days session
+
+    if (usePostgres) {
+      await pool.query(
+        `INSERT INTO legal_sessions (token, user_id, username, role, expires_at)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [token, matchedUser.id, matchedUser.username, matchedUser.role, expiresAt]
+      );
+    } else {
+      inMemorySessions.set(token, {
+        token,
+        userId: matchedUser.id,
+        username: matchedUser.username,
+        role: matchedUser.role,
+        expiresAt: expiresAt.getTime()
+      });
+    }
+
+    res.json({
+      ok: true,
+      token,
+      user: {
+        id: matchedUser.id,
+        username: matchedUser.username,
+        name: matchedUser.name,
+        role: matchedUser.role
+      }
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Check current session
+app.get('/api/auth/me', async (req, res) => {
+  const session = await getSessionFromRequest(req);
+  if (!session) {
+    return res.status(401).json({ ok: false, error: 'Not authenticated.' });
+  }
+  let name = session.username;
+  if (usePostgres) {
+    try {
+      const u = await pool.query('SELECT name, role FROM legal_users WHERE id = $1', [session.user_id]);
+      if (u.rows.length > 0) name = u.rows[0].name || name;
+    } catch (e) {}
+  } else {
+    const u = (inMemoryDb.users || []).find(x => x.id === session.userId);
+    if (u) name = u.name || name;
+  }
+  res.json({
+    ok: true,
+    user: {
+      username: session.username,
+      name,
+      role: session.role
+    }
+  });
+});
+
+// Logout
+app.post('/api/auth/logout', async (req, res) => {
+  const authHeader = req.headers['authorization'] || '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : req.body.token;
+  if (token) {
+    if (usePostgres) {
+      await pool.query('DELETE FROM legal_sessions WHERE token = $1', [token]);
+    } else {
+      inMemorySessions.delete(token);
+    }
+  }
+  res.json({ ok: true, message: 'Logged out successfully.' });
+});
+
+// Change Password
+app.post('/api/auth/change-password', requireAuth, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ ok: false, error: 'Current and new password are required.' });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ ok: false, error: 'New password must be at least 6 characters.' });
+    }
+    const currentHash = hashPassword(currentPassword);
+    const newHash = hashPassword(newPassword);
+
+    if (usePostgres) {
+      const uRes = await pool.query('SELECT password_hash FROM legal_users WHERE id = $1', [req.user.user_id]);
+      if (uRes.rows.length === 0 || uRes.rows[0].password_hash !== currentHash) {
+        return res.status(400).json({ ok: false, error: 'Current password is incorrect.' });
+      }
+      await pool.query('UPDATE legal_users SET password_hash = $1 WHERE id = $2', [newHash, req.user.user_id]);
+    } else {
+      inMemoryDb.users = inMemoryDb.users || DEFAULT_USERS;
+      const u = inMemoryDb.users.find(x => x.id === req.user.userId);
+      if (!u || u.password_hash !== currentHash) {
+        return res.status(400).json({ ok: false, error: 'Current password is incorrect.' });
+      }
+      u.password_hash = newHash;
+      saveLocalData(inMemoryDb);
+    }
+    res.json({ ok: true, message: 'Password updated successfully.' });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
 
 // ================= API ENDPOINTS =================
 
@@ -133,7 +357,7 @@ app.get('/api/status', async (req, res) => {
 // ================= LEGAL REQUIREMENTS TRACKER ENDPOINTS =================
 
 // GET all legal records
-app.get('/api/records', async (req, res) => {
+app.get('/api/records', requireAuth, async (req, res) => {
   try {
     if (usePostgres) {
       const result = await pool.query('SELECT data FROM legal_records ORDER BY updated_at DESC');
@@ -147,7 +371,7 @@ app.get('/api/records', async (req, res) => {
 });
 
 // POST single legal record (upsert)
-app.post('/api/records', async (req, res) => {
+app.post('/api/records', requireAuth, async (req, res) => {
   try {
     const record = req.body;
     if (!record || !record.id) {
@@ -182,7 +406,7 @@ app.post('/api/records', async (req, res) => {
 });
 
 // DELETE single legal record
-app.delete('/api/records/:id', async (req, res) => {
+app.delete('/api/records/:id', requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
     if (usePostgres) {
@@ -198,7 +422,7 @@ app.delete('/api/records/:id', async (req, res) => {
 });
 
 // POST sync legal records
-app.post('/api/sync-records', async (req, res) => {
+app.post('/api/sync-records', requireAuth, async (req, res) => {
   try {
     const clientRecords = Array.isArray(req.body.records) ? req.body.records : [];
     if (usePostgres) {
